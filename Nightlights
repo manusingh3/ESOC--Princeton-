@@ -1,0 +1,229 @@
+#########Processing nightlights#########
+install.packages("sp")
+install.packages("rgdal")
+# installing the required packages and setting the directory
+library(doParallel)
+library(foreach)
+library(raster)
+library(sp)
+library(rgdal)
+library(ggmap)
+library(plotly)
+library(sp)
+library(rgdal)
+
+setwd("C:/Users/ms52/Downloads/nightlights/april")
+
+# The folder contains two files - one with corrections to exclude environmental conditions 
+#like clouds and gas flares from the calculations. The other has all sources of light - we will process both in our calculations 
+# and compare results. The files which end in rad_9 contain the average radiance values. The other file contains the average number of cloud free days 
+# used to make that calculation. 
+
+####### Note - VCMCFG containing data that excludes any stray light.
+####### Note - The spatial projection used for this is WGS84. 
+
+
+# load the required file for analysis- and set the projection
+file =  file.choose()
+
+#tifs = list.files(file,pattern = "\\.tif")
+rast <- raster(file)
+
+wgs84 <- "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
+projection(rast) <- CRS(wgs84)
+
+# use the district shapefiles - 
+
+distshape <- file.choose()
+
+map <- readOGR(dsn="C:\\Users\\ms52\\Downloads\\nightlights\\april", layer="district398")
+
+# setting the projection of both the files as same 
+projection(map) <- CRS(wgs84)
+
+
+#Trail run only for a few cities of our interest 
+
+cities <- c("Mazar-i-Sharif", "Kabul", "Kandahar", "Sar-e Pol", "Lashkar Gah", "Parun") 
+
+#par(mai=c(0,0,0,0),mfrow = c(3,2),bg='#001a4d', bty='n')
+
+coords <- data.frame() ##place holder
+
+
+
+
+
+par(mai=c(0.25,0.25,0.25,0.25),bg='#001a4d',mfrow = c(3,2))
+
+##Loop through data
+coords <- data.frame() ##place holder
+
+for(i in 1:length(cities)){
+  
+  ##Coords
+  temp_coord <- geocode(cities[i], source = "google")
+  coords <- rbind(coords,temp_coord)
+  
+  e <- extent(temp_coord$lon - 1, temp_coord$lon + 1,
+              temp_coord$lat - 0.25, temp_coord$lat + 0.25)
+  rc <- crop(rast, e)    
+  
+  ##Rescale brackets
+  sampled <- as.vector(rc)
+  clusters <- 15
+  clust <- kmeans(sampled,clusters)$cluster
+  combined <- as.data.frame(cbind(sampled,clust))
+  brk <- sort(aggregate(combined[,1], list(combined[,2]), max)[,2])
+  
+  #Plots
+  plot(rc, breaks=brk, col=colorRampPalette(c("#001a4d","#0066FF", "yellow"))(clusters), 
+       legend=T,yaxt='n',xaxt='n',frame = F, asp=1.5,title(main = cities[i-1]))
+
+  
+  rm(combined)
+}
+
+
+
+#Run clustering
+set.seed(123) #set seed for reproducibility
+sampled <- sample(rast, 20000) #sample 20,000 pixels
+clusters <- 15 ##15 clusters
+clust <- kmeans(sampled,clusters)$cluster
+combined <- as.data.frame(cbind(sampled,clust))
+brk <- sort(aggregate(combined[,1], list(combined[,2]), max)[,2])
+
+par(mai=c(0.25,0.25,0.25,0.25),bg='#001a4d',mfrow = c(3,2))
+##Loop through each city
+for(i in 1:length(cities)){
+  
+  temp_coord <- coords[i,] ##re-use the coordinates 
+  e <- extent(temp_coord$lon - 1, temp_coord$lon + 1,
+              temp_coord$lat - 0.25, temp_coord$lat + 0.25)
+  rc <- crop(rast, e)    
+  
+  #Plots
+  plot(rc, breaks=brk, col=colorRampPalette(c("#001a4d","#0066FF", "yellow"))(clusters), 
+       legend=T,yaxt='n',xaxt='n',frame = F, asp=1.5, title(cities[i-1]))
+  text(temp_coord$lon ,temp_coord$lat + 0.15,
+       substr(cities[i],1,regexpr(",",cities[i])-1), 
+       col="white", cex=1.25)
+}
+
+
+
+
+
+
+##################Try and cut the raster file according to the shapefile of the Afghan districts############
+
+#### plot with different values of i = 35(lashkar gah), 71(saripul), 353- Kabul
+  
+  #Extract one polygon based on index value i
+  map = map[map$OBJECTID=="353",] #extract one polygon
+  extent <- extent(polygon) #extract the polygon extent 
+  
+  #Raster extract
+  outer <- crop(rast, extent) #extract raster by polygon extent
+  inner <- mask(outer,polygon) #keeps values from raster extract that are within polygon
+  
+  #Convert cropped raster into a vector
+  #Specify coordinates
+  coords <- expand.grid(seq(extent@xmin,extent@xmax,(extent@xmax-extent@xmin)/(ncol(inner)-1)),
+                        seq(extent@ymin,extent@ymax,(extent@ymax-extent@ymin)/(nrow(inner)-1)))
+  #Convert raster into vector
+  data <- as.vector(inner)
+  
+  #package data in neat dataframe
+  data <- cbind(as.character(map$OBJECTID[i]),coords, data) 
+  colnames(data)<-c("GEOID","lon","lat","avg_rad") #note that 
+  data <- data[!is.na(data$avg_rad),] #keep non-NA values only
+  
+
+  
+#plot frequency plots or hostograms
+  # next steps plot the data for all the months
+  
+  ggplot(data, aes(avg_rad)) +
+    geom_histogram()
+
+  
+  
+  
+  
+  
+  #################### Archinved Data ######################
+  #Comparison 
+  
+  # Data downloaded from - http://ngdc.noaa.gov/eog/dmsp/downloadV4composites.html
+  
+  
+  
+# #######################trial plotting of the data - histograms#########
+# 
+# # ##MSAs by GEOID
+# # msa_list <- c(35,71,353)
+# # 
+# # ##Placeholder
+# # radiances <- data.frame() 
+# # 
+# # ##Loop MSA file
+# # for(i in msa_list){
+# #   
+# #   print(i)
+# #   
+# #   #Extract MSA i polygon
+# #   shp_temp <- map[map$DISTID==i,]
+# #   
+# # 
+# #   
+# #   #Extract the radiances, append to radiances placeholder
+# #   rad <- masq(shp_temp,rast,1)$avg_rad 
+# #   temp <- data.frame(loc = as.character(paste(loc,"(TNL = ",round(sum(rad),0),")",sep="")), avg_rad = rad) 
+# #   radiances <- rbind(radiances,temp)
+# # }
+# 
+# #Use ggplot to create histograms by MSA group. Preload.
+# g1 <-ggplot(data, aes(x=log(avg_rad))) +
+#   geom_histogram(position="identity", alpha=0.4)
+# 
+#   
+#   
+#   g2 <-ggplot(data, aes(x=log(avg_rad))) +
+#     geom_histogram(position="identity", alpha=0.4)  
+#   
+#   plot(g2)
+#   
+#   multiplot(g1, g2, cols=2)
+#   
+#   
+#   
+#   
+#   
+#   
+#   
+#   
+#   
+#   
+#   
+#   
+#   
+#   
+#   
+# #Remove all axes labels for style
+# x <- list(
+#   zeroline = FALSE,
+#   showline = FALSE,
+#   showticklabels = FALSE,
+#   showgrid = FALSE
+# )
+# y <- list(
+#   zeroline = FALSE,
+#   showline = FALSE,
+#   showticklabels = FALSE,
+#   showgrid = FALSE
+# ) 
+# 
+# #Initiate a plotly graph without axes
+# ggplotly()  %>% layout(xaxis=x, yaxis=y)
