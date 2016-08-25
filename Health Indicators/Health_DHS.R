@@ -127,15 +127,97 @@ trial = cast(test,sex.of.sibling~ sibling.currently.alive)
 
 total = data.frame()
 ###############new data set with all the women who died while pregnant ################### 
-for (i in 1:20) {
-  
-  b = paste("died.while.pregnant.",i, sep = "")
 test = subset(df, df$died.while.pregnant ==1 )
 
 final = test[, c("cluster.number","sample.weight..6.decimals.", "province", b )]
 
 colnames(final) = c("c.number", "sample.weight", "province", "mat.death")
 
- }
+
+for (i in 1:11) {
+  
+  b = paste("died.while.pregnant.",i, sep = "")
+test = subset( df, df[, b] ==1)
+
+final = test[, c("cluster.number","sample.weight..6.decimals.", "province", b )]
+
+colnames(final) = c("c.number", "sample.weight", "province", "mat.death")
 
 total = rbind(final, total)
+ }
+
+#####################women who died during childbirth#######################
+test = subset(df, df$died.during.childbirth ==1 )
+
+final = test[, c("cluster.number","sample.weight..6.decimals.", "province", "died.during.childbirth" )]
+
+colnames(final) = c("c.number", "sample.weight", "province", "mat.death")
+
+total = rbind(final, total)
+
+for (i in 1:11) {
+  
+  b = paste("died.during.childbirth.",i, sep = "")
+  test = subset( df, df[, b] ==1)
+  
+  final = test[, c("cluster.number","sample.weight..6.decimals.", "province", b )]
+  
+  colnames(final) = c("c.number", "sample.weight", "province", "mat.death")
+  
+  total = rbind(final, total)
+}
+
+###############died two months after childbirth#############################
+
+test = subset(df, df$died.within.2.months.of.delivery ==1 )
+
+final = test[, c("cluster.number","sample.weight..6.decimals.", "province", "died.within.2.months.of.delivery" )]
+
+colnames(final) = c("c.number", "sample.weight", "province", "mat.death")
+
+total = rbind(final, total)
+
+
+for (i in 1:11) {
+  
+  b = paste("died.within.2.months.of.delivery.",i, sep = "")
+  test = subset( df, df[, b] ==1)
+  
+  final = test[, c("cluster.number","sample.weight..6.decimals.", "province", b )]
+  
+  colnames(final) = c("c.number", "sample.weight", "province", "mat.death")
+  
+  total = rbind(final, total)
+}
+
+
+
+####################creating new colum which  divides the deaths by total number of women in that province 
+
+d = read.csv(file.choose())
+d$count = 1
+pop = tapply(d$count, df$province, sum)
+pop = as.data.frame(pop)
+pop$province = row.names(pop)
+total = merge(total, pop, by = "province")
+write.csv(total, file = "total.csv")
+
+
+#####row transformations before calculating probabilities##########
+
+total$mat.death = total$mat.death/total$pop
+total$sample.weight = total$sample.weight/1000000
+
+
+############survey design \
+
+survey = svydesign(ids = total$c.number, data = total, weights = total$sample.weight)
+
+a = as.data.frame(prop.table(svytable(~province, design = survey)))
+
+a = as.data.frame(svytotal(~province , survey))
+b = rownames(a)
+b = gsub("province","",b)
+a$province = b
+head(a)
+write.csv(a , file = "total_maternal_mortality_province.csv")
