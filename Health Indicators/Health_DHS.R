@@ -221,3 +221,53 @@ b = gsub("province","",b)
 a$province = b
 head(a)
 write.csv(a , file = "total_maternal_mortality_province.csv")
+
+#######Deaths of women weighed by live births #####
+d = read.csv(file.choose())
+child = d[,112:135]
+
+child$sum = rowSums(child[,1:23])
+child$child.born.alive.or.dead = ifelse(child$child.born.alive.or.dead =="alive", 1,0)
+
+for (i in 1:23){
+  
+  b = paste("child.born.alive.or.dead.",i, sep = "")
+  
+  child[,b] = ifelse((child[,b] =="alive" ), 1, 0)
+  
+}
+
+child$sum = rowSums(child[1:20])
+child$sum = rowSums(child, na.rm = TRUE)
+
+prov = d$province
+child = cbind(child, prov)
+head(child)
+
+alive.ch = as.data.frame(tapply(child$sum, child$prov, sum))
+
+alive.ch$province = rownames(alive.ch)
+head(alive.ch)
+colnames(alive.ch) = c("alive.child", "province")
+total = merge(total, alive.ch, by = "province" )
+head(total)
+total$mat.death = total$mat.death*total$pop
+total$mat.death = total$mat.death/total$alive.child
+
+a = (tapply(total$mat.death, total$province, sum))*100000
+write.csv(a , file = "maternal death per 100000 live births.csv")
+
+
+#######running correlation between the two ############
+
+library(corrplot)
+a = as.data.frame(a)
+a$province = rownames(a)
+
+d = read.csv(file.choose())
+a = read.csv(file.choose()) # use a aftre running t apply with row names and only numberic data
+head(a)
+colnames(d) = c("province","X")
+rownames(d) = d$province
+d = merge(a, d , by = "province")
+cor(d[,unlist(lapply(d, is.numeric))])
