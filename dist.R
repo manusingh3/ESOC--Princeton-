@@ -25,8 +25,8 @@ file =  file.choose()
 #tifs = list.files(file,pattern = "\\.tif")
 rast <- raster(file)
 
-#wgs84 <- "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
-#projection(rast) <- CRS(wgs84)
+wgs84 <- "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
+projection(rast) <- CRS(wgs84)
 
 # use the district shapefiles - 
 
@@ -40,7 +40,7 @@ projection(map) <- CRS(wgs84)
 map_data = read.csv(file.choose())
 
 dist = list()
-dist = list(map_data$DISTID)
+dist = unlist(map_data$DISTID)
 
 
 total = data.frame()
@@ -70,22 +70,20 @@ data <- cbind(as.character(i),coords, data)
 colnames(data)<-c("GEOID","lon","lat","avg_rad") #note that 
 data$avg_rad = ifelse(is.na(data$avg_rad) , 0, data$avg_rad) 
 #data <- data[!is.na(data$avg_rad),] #keep non-NA values only
-data$year = "2008"
+data$year = "2013"
 
 total = rbind(total,data)
 
 }
-
-
-write.csv(total, file = "dist_NL_2008.csv")
-
+write.csv(total, file = "dist_NL_2013.csv")
+b = read.csv(file.choose())
 b = aggregate(total$avg_rad~total$GEOID, FUN = "sum")
 colnames(b) = c("distid","total rad")
 b
 ######################Normalize by population#####################################
 
 pop = read.csv(file.choose())
-
+norm = data.frame()
 norm = merge(b, pop, by = "distid")
 norm = norm[,-3]
 colnames(norm) = c("DISTID","tot_rad","pop")
@@ -98,10 +96,9 @@ norm$norm_rad = norm$tot_rad/norm$pop*1000000
 
 norm = merge(norm, map_data, by = "DISTID")
 
-
-# head(norm)
+ head(norm)
 # colnames(norm) = c("DISTID","tot_rad","pop", "norm_rad","prov_name","dist_name","prov_id")
-write.csv(norm, file = "population_norm_NL_2008.csv")
+write.csv(norm, file = "per_capita_dist_nightlight_2013.csv")
 
 
 #########################Plotting the data on the map####################################
@@ -115,7 +112,7 @@ library(ggmap)
 library(scales)
 library(RColorBrewer)
 library(rgdal)
-
+norm = read.csv(file.choose())
 #map <-readShapeSpatial  ("C:\\Users\\ms52\\Downloads\\nightlights\\april\\district398.shp")
 map <- readOGR(dsn="C:\\Users\\ms52\\Downloads\\nightlights\\april", layer="district398")
 
@@ -128,6 +125,11 @@ colnames(norm) = c("DISTID", "tot_rad","pop","norm_rad", "id","OBJECTID","PROV_3
 map_data = merge(map_df, norm, by = "id", all.x=TRUE)
 final.plot<-map_data[order(map_data$order), ] 
 ###############################plotting the map##################################
+centroids <- setNames(do.call("rbind.data.frame", by(final.plot, final.plot$group, 
+                                                     function(x) {Polygon(x[c('long', 'lat')])@labpt})), c('long', 'lat')) 
+centroids$label <- final.plot$DIST_34_NA[match(rownames(centroids), final.plot$group)]
+
+
 ggplot() +
   geom_polygon(data = final.plot, 
                aes(x = long, y = lat, group =group , fill = log(tot_rad)), 
@@ -135,4 +137,6 @@ ggplot() +
   coord_map()+
   scale_fill_distiller(name="nightlight/population", palette = "RdBu",direction = -1 , breaks = pretty_breaks(n = 5))+
   theme_nothing(legend = TRUE)+
-  labs(title="Log of per capita illumination- per district, AF")
+  labs(title="Log of per capita illumination- per district, AF")+
+  with(centroids, annotate(geom="text", x = long, y=lat, label = label, size = 1.75)) 
+
