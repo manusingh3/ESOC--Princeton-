@@ -87,3 +87,88 @@ m = cor(dhs.cor, use="pairwise.complete.obs")
 
 library(corrplot)
 corrplot(m, method="pie")
+
+
+
+####################New changes 21 Sep #######
+## Understanding residuals wrt to violence 
+#####check if relationships exits between violence and nightlights
+# load preprocessed data for sigacts 2011
+
+df = read.csv(file.choose())
+
+
+
+
+rownames(df) = df$X
+df = df[,-1]
+par(mar=c(8,8,8,8))
+
+m = cor (df, use = "pairwise.complete.obs")
+corrplot(m, method = "number")
+
+corrplot.mixed(m)
+
+
+#####correlation combined with significance test
+cor.mtest <- function(mat, conf.level = 0.95){
+  mat <- as.matrix(mat)
+  n <- ncol(mat)
+  p.mat <- lowCI.mat <- uppCI.mat <- matrix(NA, n, n)
+  diag(p.mat) <- 0
+  diag(lowCI.mat) <- diag(uppCI.mat) <- 1
+  for(i in 1:(n-1)){
+    for(j in (i+1):n){
+      tmp <- cor.test(mat[,i], mat[,j], conf.level = conf.level)
+      p.mat[i,j] <- p.mat[j,i] <- tmp$p.value
+      lowCI.mat[i,j] <- lowCI.mat[j,i] <- tmp$conf.int[1]
+      uppCI.mat[i,j] <- uppCI.mat[j,i] <- tmp$conf.int[2]
+    }
+  }
+  return(list(p.mat, lowCI.mat, uppCI.mat))
+}
+
+
+
+res1 = cor.mtest(m , 0.95)
+
+corrplot(m, p.mat = res1[[1]], sig.level=0.5)
+
+
+
+corrplot(m, p.mat = res1[[1]], insig = "p-value")
+#### centering data
+
+df$sig_scale = scale(df$sigacts, center = TRUE, scale = FALSE)
+
+#####scatter plot and linear regression
+library(ggplot2)
+p <- ggplot(df, aes(log_sig_pc, resid1))
+p+geom_point()
+p+geom_smooth(method = "lm")+geom_point()
+       
+
+lm1 = lm(log_rad_pc~country, data = df)
+resid1 = resid(lm1)
+
+
+plot(df$log_sig_pc, resid1, 
+          ylab="Residuals", xlab="Violent events", 
+           main="Residuals of violence- Normalised") 
+abline(lm(df$log_sig_pc~resid1))
+
+#####Normalised by population
+
+p <- ggplot(df, aes(sig_scale, log(norm_rad)))
+p+geom_point()
+p+geom_smooth(method = "lm")+geom_point()
+
+
+lm2 = lm(norm_rad~sig_scale, data = df)
+resid2 = resid(lm2)
+
+
+plot(df$sigacts, resid2, 
+     ylab="Residuals", xlab="Violence", 
+     main="Residuals of violence- Normalised") 
+abline(0, 0)
