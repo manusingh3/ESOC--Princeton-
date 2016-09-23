@@ -21,6 +21,7 @@ setwd("C:/Users/ms52/Downloads/nightlights/april")
 
 ####### Note - VCMCFG containing data that excludes any stray light.
 ####### Note - The spatial projection used for this is WGS84. 
+#####Note - The data is downloaded from -http://ngdc.noaa.gov/eog/viirs/download_monthly.html for Afghanistan we use TILE 3
 
 
 # load the required file for analysis- and set the projection
