@@ -1,5 +1,6 @@
 #population cluster analysis
 #population cluster analysis
+#population cluster analysis
 library(doParallel)
 library(foreach)
 library(raster)
@@ -9,7 +10,8 @@ library(ggmap)
 library(plotly)
 library(sp)
 library(rgdal)
-
+library(snow)
+library(osc)
 setwd("C:/Users/ms52/Downloads/population")
 
 # load the required file for analysis- and set the projection
@@ -22,6 +24,13 @@ wgs84 <- "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
 projection(rast) <- CRS(wgs84)
 
 # use the district shapefiles - 
+#trial files\
+ file1 = file.choose()
+ r = raster(file1)
+ total = read.csv(file.choose())
+ copy1 = total
+ total = total[,c(3,4,5)]
+ total$avg_rad = as.numeric(total$avg_rad)
 
 #distshape <- file.choose()
 
@@ -72,3 +81,38 @@ for(i in dist)
 }
 
 save(total,file="population.Rdata")
+
+####Clustering algo from OSC - orthodrinic spatial clustering 
+
+trial = cca(total, s=1, mode=3, count.cells=FALSE,
+    count.max=ncol(data)*3,
+    res.x=NULL, res.y=NULL, cell.class=1,
+    unit="", compare="")
+cols <- c("white",rep(rainbow(10), length.out=length(table(trial))) )
+
+image(trial, col=cols, xlab="", ylab="")
+##### raster clustering
+
+urban <- cca(r, cell.class=1,s=2000, unit="m")
+str(urban)
+# plot the result
+# result <- landcover*NA
+# result[cellFromXY(result,urban$cluster[,c("long","lat")])]<-urban$cluster[,"cluster_id"]*(-1)
+# plot(result, col=rainbow(9))
+
+
+# replace all NA values from raster dataset with 0 for computation 
+
+r[is.na(r[])] <- 0 
+# wgs84 <- "+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0"
+# projection(r) <- CRS(wgs84)
+
+
+###Clustering agaon with total dataset excluding the 0 points
+row_sub = apply(total, 1, function(row) all(row !=0 ))
+total = total[row_sub,]
+
+#new cluster
+trial = cca(total, s=5, mode=1, count.cells=FALSE,
+            res.x=NULL, res.y=NULL,
+            unit="", compare="")
