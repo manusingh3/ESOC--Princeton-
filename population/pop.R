@@ -113,6 +113,31 @@ row_sub = apply(total, 1, function(row) all(row !=0 ))
 total = total[row_sub,]
 
 #new cluster
-trial = cca(total, s=5, mode=1, count.cells=FALSE,
-            res.x=NULL, res.y=NULL,
-            unit="", compare="")
+# trial = cca(total, s=5000, mode=1, count.cells=FALSE,
+#             res.x=NULL, res.y=NULL,
+#             unit="", compare="")
+urban <- cca(rast, cell.class=1,s=2000, unit="m")
+trial2 = cca(rast, s=50000, count.cells=FALSE,cell.class=1,unit="m", compare="10")
+
+result = total*NA
+result[cellFromXY(result,trial$cluster[,c("long","lat")])]<-trial$cluster[,"cluster_id"]*(-1)
+plot(result, col=rainbow(9))
+
+
+ test = trial$cluster
+ test = test[ !(test$cluster_id ==1), ]
+ colnames(test) = c("lon","lat","cluster_id")
+ 
+ 
+ #plotting on the actual map 
+ af <- get_map(location = "afghanistan", zoom = 15)
+ 
+ af  <- qmap("afghanistan", zoom = 6, legend = "topleft")
+ 
+  af+ geom_point(aes(x = lon, y = lat,
+                    size = cluster_id),
+                data = test)
+  
+  
+  
+ 
