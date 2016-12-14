@@ -75,7 +75,7 @@ ggplot(total, aes(x=acts, y=tot_rad)) +
 ############plotting regression results
 ggplotRegression <- function (fit) {
   
-  require(ggplot2)
+  library(ggplot)
   
   ggplot(fit$model, aes_string(x = names(fit$model)[2], y = names(fit$model)[1])) + 
     geom_point() +
