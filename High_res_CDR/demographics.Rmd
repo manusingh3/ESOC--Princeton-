@@ -91,7 +91,7 @@ library(reshape2)
 melt =  melt(total, id = c("X"))
 head(melt)
 melt$value = ifelse(melt$variable =="NRVA",melt$value*-1,melt$value)
-
+melt$X <- factor(melt$X, levels = melt$X)
 
 library(ggplot2)
 
