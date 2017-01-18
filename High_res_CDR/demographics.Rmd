@@ -1,0 +1,72 @@
+---
+title: "Demographic_robust"
+author: "Manu"
+date: "January 18, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Preprocessing
+
+Load clean and preprocess the file to create the three required variables:
+
+1. Size of household (size)
+2. Gender ratio of household (gender)
+3. Age pyramid- (Age)
+
+As the NRVA dataset being used now is about 3 years old infants younger than 3 and adults older than 55 are excluded from the sample.
+```{r}
+
+df = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Sayara\\baseline\\highRez_baseline_hhroster.csv")
+
+head(df)
+d = df
+
+#Exclude children and very old ppl
+df<-df[!(df$Q_1_06_ < 4 | df$Q_1_06_ > 55),]
+
+
+df$male = ifelse(df$Q_1_05_ =="Male",1,0)
+df$female = ifelse(df$Q_1_05_ =="Female",1,0)
+#total males
+a = as.data.frame (tapply(df$male, df$respid, FUN = sum))
+a$respid = rownames(a)
+colnames(a) = c("tot_male", "respid")
+head(a)
+#total females
+b = as.data.frame (tapply(df$female, df$respid, FUN = sum))
+
+b$respid = rownames(b)
+colnames(b) = c("tot_female", "respid")
+head(b)
+
+temp = merge(a, b, by = "respid")
+temp$gender_ratio = temp$tot_male/temp$tot_female
+
+head(temp)
+
+df = merge (temp, df, by = "respid")
+```
+
+
+```{r}
+
+###Calculating Household sizes
+
+library(plyr)
+
+a = count(df, "respid")
+
+df = merge(a, df, by = "respid")
+```
+
+
+```{r}
+##### Similar preprocessing for NRVA data calculating the gender ratio and household sizes
+
+
+
+`
