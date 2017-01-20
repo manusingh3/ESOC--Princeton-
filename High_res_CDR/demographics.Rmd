@@ -76,6 +76,7 @@ df$age_bracket <- as.factor( as.numeric( cut(df$Q_1_06_,breaks = seq(0, 55, by =
 
 a = as.data.frame(table(df$age_bracket))
 
+a
 write.csv(a, file = "age_pyr_BL.csv")
 
 ##combine features from both the files and display
@@ -83,7 +84,7 @@ file = choose.files()
 total = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\age_pyr_total.csv")
 
 ```
-
+The plot below shows distribution of age groups in NRVA as compared to the base line.
 ```{r}
 #Reshaping and plotting data
 library(reshape2)
@@ -103,4 +104,81 @@ library(ggplot2)
 
 
 
-````
+```
+#Other exploratory plots are as follows:
+
+```{r}
+
+df$age_bracket <- as.factor( as.numeric( cut(df$Q_1_06_,breaks = seq(0, 55, by = 5))))
+
+male =as.data.frame(   aggregate(df$male~df$age_bracket,
+  sum,
+  data=df))
+
+female =as.data.frame(   aggregate(df$female~df$age_bracket,
+  sum,
+  data=df))
+
+total = merge(male, female, by = "df$age_bracket" )
+
+total$male_percent = (total$male)/(colSums(total$male))
+
+colnames(total) = c("age_bracket","male","female")
+
+write.csv(total, file = "age_pyr_BL_mf.csv")
+base = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\age_pyr_BL_mf.csv")
+
+
+
+```
+
+#making the violin plots to compare side by side
+```{r}
+
+###plotting NRVA survey stuff
+base = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\age_py_mf_NRVA.csv")
+melt =  melt(base, id = c("age_bracket"))
+head(melt)
+melt$value = ifelse(melt$variable =="Male",melt$value*-1,melt$value)
+melt$age_bracket <- factor(melt$age_bracket, levels = melt$age_bracket)
+
+
+ g2 = ggplot(data=melt,aes(x=age_bracket, y = value,fill=variable)) + 
+  geom_bar(data=melt[melt[["variable"]] =="Male",], stat = "identity" )+geom_text(label = round(melt$value), nudge_y = 0.5)+
+  geom_bar(data=melt[melt[["variable"]] == "Female",] , stat = "identity") +   scale_y_continuous(breaks=seq(-40,40,2),labels=abs(seq(-40,40,2)))+coord_flip()+scale_fill_brewer(palette = "Set1") +theme_bw()+ggtitle("NRVA SURVEY AGE AND GENDER DISTRIBUTION")
+ 
+ 
+ #######plotting NRVA survey
+ base1 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\age_pyr_BL_mf.csv")
+melt1 =  melt(base1, id = c("age_bracket"))
+head(melt1)
+melt1$value = ifelse(melt1$variable =="male",melt1$value*-1,melt1$value)
+melt1$age_bracket <- factor(melt1$age_bracket, levels = melt1$age_bracket)
+
+
+ g1 = ggplot(data=melt1,aes(x=age_bracket, y = value,fill=variable)) + 
+  geom_bar(data=melt1[melt1[["variable"]] =="male",], stat = "identity" )+geom_text(label = round(melt1$value), nudge_y = 0.5)+
+  geom_bar(data=melt1[melt1[["variable"]] == "female",] , stat = "identity") +   scale_y_continuous(breaks=seq(-40,40,2),labels=abs(seq(-40,40,2)))+coord_flip()+scale_fill_brewer(palette = "Set1") +theme_bw()+ggtitle("BASELINE SURVEY AGE AND GENDER DISTRIBUTION")
+
+####plotting NRVA stuff
+require(cowplot) 
+plot_grid(g1, g2)
+
+
+
+
+```
+
+
+
+```{r}
+
+
+
+
+
+
+```
+
+
+
