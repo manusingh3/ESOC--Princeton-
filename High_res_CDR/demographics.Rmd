@@ -9,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Data Preprocessing
+### Data Preprocessing
 
 Load clean and preprocess the file to create the three required variables:
 
@@ -17,8 +17,8 @@ Load clean and preprocess the file to create the three required variables:
 2. Gender ratio of household (gender)
 3. Age pyramid- (Age)
 
-As the NRVA dataset being used now is about 3 years old infants younger than 3 and adults older than 55 are excluded from the sample.
-```{r}
+As the NRVA dataset being used now is about 3 years old (data collected in 2012) thus infants younger than 3 are excluded.Adults older than 55 are excluded from the sample as an upper limit.
+```{r echo =FALSE, warning=FALSE, error=FALSE, results='hide'}
 
 df = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Sayara\\baseline\\highRez_baseline_hhroster.csv")
 
@@ -39,35 +39,35 @@ df$female = ifelse(df$Q_1_05_ =="Female",1,0)
 a = as.data.frame (tapply(df$male, df$respid, FUN = sum))
 a$respid = rownames(a)
 colnames(a) = c("tot_male", "respid")
-head(a)
+#head(a)
 #total females
 b = as.data.frame (tapply(df$female, df$respid, FUN = sum))
 
 b$respid = rownames(b)
 colnames(b) = c("tot_female", "respid")
-head(b)
+#head(b)
 
 temp = merge(a, b, by = "respid")
 temp$gender_ratio = temp$tot_male/temp$tot_female
 
-head(temp)
+#head(temp)
 
 df = merge (temp, df, by = "respid")
 ```
 
 
-```{r}
+```{r echo =FALSE, warning=FALSE, error=FALSE}
 
 ###Calculating Household sizes
 
 library(plyr)
-head(df)
+#head(df)
 a = count(df, "respid")
 df = merge(a, df, by = "respid")
 ```
+### Age Pyramid comparison across NRVA and Baseline.
 
-
-```{r}
+```{r echo =FALSE, warning=FALSE, error=FALSE}
 ##### processing data for comparison with NRVA
 
 
@@ -76,38 +76,43 @@ df$age_bracket <- as.factor( as.numeric( cut(df$Q_1_06_,breaks = seq(0, 55, by =
 
 a = as.data.frame(table(df$age_bracket))
 
-a
 write.csv(a, file = "age_pyr_BL.csv")
 
 ##combine features from both the files and display
-file = choose.files()
+
 total = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\age_pyr_total.csv")
 
 ```
-The plot below shows distribution of age groups in NRVA as compared to the base line.
-```{r}
+The plot below shows distribution of age groups (combining results from both men and women) in NRVA as compared to the base line survey. The t test results suggest that the null hypothesis cannot be rejected and that the two samples are quite similar
+```{r echo =FALSE, warning=FALSE, error=FALSE}
 #Reshaping and plotting data
 library(reshape2)
 
+
+
 melt =  melt(total, id = c("X"))
-head(melt)
+t.test(data = melt, value~variable, var.equal=FALSE, paired=FALSE)
+
 melt$value = ifelse(melt$variable =="NRVA",melt$value*-1,melt$value)
 melt$X <- factor(melt$X, levels = melt$X)
 
 library(ggplot2)
 
 
- ggplot(data=melt,aes(x=X, y = value,fill=variable)) + 
-  geom_bar(data=melt[melt[["variable"]] =="NRVA",], stat = "identity" )+
-  geom_bar(data=melt[melt[["variable"]] == "BASE_LINE",] , stat = "identity") +   scale_y_continuous(breaks=seq(-40,40,2),labels=abs(seq(-40,40,2)))+coord_flip()+scale_fill_brewer(palette = "Set1") +theme_bw()
+ # ggplot(data=melt,aes(x=X, y = value,fill=variable)) + 
+ #  geom_bar(data=melt[melt[["variable"]] =="NRVA",], stat = "identity" )+
+ #  geom_bar(data=melt[melt[["variable"]] == "BASE_LINE",] , stat = "identity") +   scale_y_continuous(breaks=seq(-40,40,2),labels=abs(seq(-40,40,2)))+coord_flip()+scale_fill_brewer(palette = "Set1") +theme_bw()
 
 
 
 
 ```
-#Other exploratory plots are as follows:
 
-```{r}
+
+
+Other exploratory plots useful in comparing our sample population with NRVA population. Here the age pyramids are broken by age and gender and are displayed alongside for easy comparison. (Note to jake _ I have gender ratio also at this point if necessary can make a stacked bar graph for that as well.)
+
+```{r echo =FALSE, warning=FALSE, error=FALSE}
 
 df$age_bracket <- as.factor( as.numeric( cut(df$Q_1_06_,breaks = seq(0, 55, by = 5))))
 
@@ -121,7 +126,7 @@ female =as.data.frame(   aggregate(df$female~df$age_bracket,
 
 total = merge(male, female, by = "df$age_bracket" )
 
-total$male_percent = (total$male)/(colSums(total$male))
+#total$male_percent = (total$male)/(colSums(total$male))
 
 colnames(total) = c("age_bracket","male","female")
 
@@ -131,14 +136,13 @@ base = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicator
 
 
 ```
-
-#making the violin plots to compare side by side
-```{r}
+### Age Pyramid and Gender comparison of NRVA and Baseline.
+```{r echo =FALSE, warning=FALSE, error=FALSE}
 
 ###plotting NRVA survey stuff
 base = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\age_py_mf_NRVA.csv")
 melt =  melt(base, id = c("age_bracket"))
-head(melt)
+#head(melt)
 melt$value = ifelse(melt$variable =="Male",melt$value*-1,melt$value)
 melt$age_bracket <- factor(melt$age_bracket, levels = melt$age_bracket)
 
@@ -151,7 +155,7 @@ melt$age_bracket <- factor(melt$age_bracket, levels = melt$age_bracket)
  #######plotting NRVA survey
  base1 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\age_pyr_BL_mf.csv")
 melt1 =  melt(base1, id = c("age_bracket"))
-head(melt1)
+#head(melt1)
 melt1$value = ifelse(melt1$variable =="male",melt1$value*-1,melt1$value)
 melt1$age_bracket <- factor(melt1$age_bracket, levels = melt1$age_bracket)
 
@@ -161,24 +165,100 @@ melt1$age_bracket <- factor(melt1$age_bracket, levels = melt1$age_bracket)
   geom_bar(data=melt1[melt1[["variable"]] == "female",] , stat = "identity") +   scale_y_continuous(breaks=seq(-40,40,2),labels=abs(seq(-40,40,2)))+coord_flip()+scale_fill_brewer(palette = "Set1") +theme_bw()+ggtitle("BASELINE SURVEY AGE AND GENDER DISTRIBUTION")
 
 ####plotting NRVA stuff
-require(cowplot) 
-plot_grid(g1, g2)
+# require(cowplot) 
+# plot_grid(g1, g2)
 
 
 
 
 ```
 
+ ![test](C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\comparison_age_gender.png)
 
 
+### Household size comparison between NRVA and Baseline
+
+Note to jake - We can choose the kind of plot we want to display, a simple stacked bar graph looks little too colourful, maybe I can make it greyscale. Here are few other ways of vizualizing the same data. Data labels are also attached for easy comparison. if you feel they are unnecessary I can get rid of it.
+
+The two sample t test with a very high p value sugget that null hypothesis cannot be rejected and the two groups are significantly similar
+```{r echo =FALSE, warning=FALSE, error=FALSE}
+hhsize = as.data.frame(table(df$freq))
+write.csv(hhsize, file = "hhsize_temp.csv")
+
+total = read.csv( "C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\HHSIZE_combined.csv")
+
+melt =  melt(total, id = c("X"))
+t.test(data = melt, value~variable, var.equal=FALSE, paired=FALSE)
+
+melt$X <- factor(melt$X, levels = melt$X)
+
+ggplot(melt, aes(x = X, y = value, fill=variable)) + geom_bar( stat = "identity", position="dodge") +scale_fill_brewer(palette = "Set1")+labs(x=NULL, y=NULL)+ ggtitle(" Household size distribution in NRVA and Baseline survey")+geom_text(label = round(melt$value),  position = position_dodge(0.9), vjust = 0)
+
+ggplot(melt, aes(x = X, y = value, fill=variable)) + geom_bar( stat = "identity") +scale_fill_brewer(palette = "Set1")+labs(x=NULL, y=NULL)
+
+ggplot(melt, aes(x = variable, y = value, fill=X)) + geom_bar( stat = "identity") +scale_fill_brewer(palette = "Set1")+ labs(x=NULL, y=NULL)
+```
+
+
+
+### Violence comparison in Kabul, Parwan and the rest of the country.
+The plots below are just prelimnary vizualizations. I will weight it by population and only consider those districts that have a certain minimum level of violence as compared to Kabul and Parwan. The figures below give an oversimplified summation of violent acts only to be used for seeing the trend . (the Y axis thus should be ignored)
+```{r echo =FALSE, warning=FALSE, error=FALSE}
+sig = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\ESOC\\Afghanistan\\OAPA Lessons Learned Study\\Clean Data\\SIGACT\\SIGACTS_FULL2.csv")
+
+sig<-sig[!(sig$year < 2010 | sig$year > 2014),]
+
+kabul = sig[sig$province =="Kabul"   ,]
+parwan = sig[sig$province =="Parwan"   ,]
+
+a =as.data.frame(   aggregate(kabul$acts~kabul$year,
+  sum,
+  data=a))
+
+colnames(a) = c("time", "acts")
+
+g1 = ggplot ( data = a, aes(x= time, y = (acts))) +geom_point()+geom_smooth() +ggtitle("Total yearly violent acts in KABUL")
+ 
+
+b =as.data.frame(   aggregate(parwan$acts~parwan$year,
+  sum,
+  data=parwan)) 
+colnames(b) = c("time", "acts")
+g2 = ggplot ( data = b, aes(x= time, y = (acts))) +geom_point()+geom_smooth() +ggtitle("Total yearly violent acts in PARWAN")
+
+ base =as.data.frame(   aggregate(sig$acts~sig$year,
+  sum,
+  data=sig)) 
+colnames(base) = c("time", "acts")
+g3 = ggplot ( data = base, aes(x= time, y = (acts))) +geom_point()+geom_smooth()+ ggtitle("Total yearly violent acts in the country")
+
+require(cowplot)
+plot_grid(g1, g2, g3)
+
+```
+
+
+
+#### Work in progress
+
+1. Working the nightlight(country) vs nightlights(our locations)  for economic comparison. 
+
+2. Working on population density (country) vs. population density(our locations) for density comparison.
+
+3. Requested Niall for a list of important (top 5) baseline CDR variables- for Cell Phone use+bandicoot featues for the whole country.
+
+
+
+#### Additional
+
+5. Violence level comparison - multiplots to be made.
+
+6. Creation of asset index, expenditure index, employment and income for comparison panel. 
+
+7. Panel  for demographic, economic and shock comparison across the datasets. 
 ```{r}
 
 
 
 
-
-
 ```
-
-
-
