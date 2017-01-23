@@ -99,9 +99,9 @@ melt$X <- factor(melt$X, levels = melt$X)
 library(ggplot2)
 
 
- # ggplot(data=melt,aes(x=X, y = value,fill=variable)) + 
- #  geom_bar(data=melt[melt[["variable"]] =="NRVA",], stat = "identity" )+
- #  geom_bar(data=melt[melt[["variable"]] == "BASE_LINE",] , stat = "identity") +   scale_y_continuous(breaks=seq(-40,40,2),labels=abs(seq(-40,40,2)))+coord_flip()+scale_fill_brewer(palette = "Set1") +theme_bw()
+ ggplot(data=melt,aes(x=X, y = value,fill=variable)) +
+  geom_bar(data=melt[melt[["variable"]] =="NRVA",], stat = "identity" )+
+  geom_bar(data=melt[melt[["variable"]] == "BASE_LINE",] , stat = "identity") +   scale_y_continuous(breaks=seq(-40,40,2),labels=abs(seq(-40,40,2)))+coord_flip()+scale_fill_brewer(palette = "Set1") +theme_bw()
 
 
 
@@ -180,7 +180,7 @@ melt1$age_bracket <- factor(melt1$age_bracket, levels = melt1$age_bracket)
 
 Note to jake - We can choose the kind of plot we want to display, a simple stacked bar graph looks little too colourful, maybe I can make it greyscale. Here are few other ways of vizualizing the same data. Data labels are also attached for easy comparison. if you feel they are unnecessary I can get rid of it.
 
-The two sample t test with a very high p value sugget that null hypothesis cannot be rejected and the two groups are significantly similar
+The two sample t test with a very high p value suggest that null hypothesis cannot be rejected and the two groups are significantly similar
 ```{r echo =FALSE, warning=FALSE, error=FALSE}
 hhsize = as.data.frame(table(df$freq))
 write.csv(hhsize, file = "hhsize_temp.csv")
@@ -202,7 +202,7 @@ ggplot(melt, aes(x = variable, y = value, fill=X)) + geom_bar( stat = "identity"
 
 
 ### Violence comparison in Kabul, Parwan and the rest of the country.
-The plots below are just prelimnary vizualizations. I will weight it by population and only consider those districts that have a certain minimum level of violence as compared to Kabul and Parwan. The figures below give an oversimplified summation of violent acts only to be used for seeing the trend . (the Y axis thus should be ignored)
+The plots below are just preliminary visualizations. I will weight it by population and only consider those districts that have a certain minimum level of violence as compared to Kabul and Parwan. The figures below give an oversimplified summation of violent acts only to be used for seeing the trend . (the Y axis thus should be ignored)
 ```{r echo =FALSE, warning=FALSE, error=FALSE}
 sig = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\ESOC\\Afghanistan\\OAPA Lessons Learned Study\\Clean Data\\SIGACT\\SIGACTS_FULL2.csv")
 
@@ -239,13 +239,65 @@ plot_grid(g1, g2, g3)
 
 
 
+
+
+
+
+
+####Economic Activity distribution in sample vs the country.
+
+The graph below the density of nightlights from the sampled locations of Parwan and Kabul. The solid black line is the national density. All the values are plotted on the log scale. 
+```{r}
+#loading files of our sample population 
+
+sample = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\oct15_nl_sample_loc.csv")
+
+a = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\ESOC\\Afghanistan\\OAPA Lessons Learned Study\\Clean Data\\Nightlights_Eco_Ind\\district_level_complete_nightlights\\dist_NL_Oct15.csv")
+
+sample.1 = sample[!(sample$PROV_34_NA =="Kapisa"), ]
+#ggplot(sample.1, aes(log(grid_code), fill = PROV_34_NA )) + geom_density(alpha = .5)
+
+loc = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\lat_long_sample.csv")
+
+# colnames(a) = c("X", "DISTID", "longitude", "latitude", "avg_rad")
+# 
+# sample[ (sample$longitude == 69.11376) & (sample$latitude == 34.45709) , ]
+# 
+# a = a[!a$avg_rad < 0,]
+# 
+# ggplot(sample.1, aes(log(grid_code), fill = PROV_34_NA )) + geom_density(alpha = .5) + geom_density(data = a , aes(avg_rad))
+#   
+#   geom_density(data = a, aes(log(avg_rad), alpha = .5))
+
+g1 = ggplot () +geom_density(data = sample.1 , aes(log(grid_code), fill = PROV_34_NA ), alpha = 0.6) + geom_density(data = a , aes(log(avg_rad)), size = 0.8)+ggtitle("Economic activity in sampled location vs the country")+xlab(" Log of Nightlights")+ ylab ("Density")
+
+g1
+```
+  
+  
+  A multiplot of the same data 
+```{r}
+
+kabul = sample[(sample$PROV_34_NA =="Kabul"), ]
+ g1 = ggplot()+geom_density(data = kabul , aes(log(grid_code) ), alpha = 0.6) +ggtitle("Economic activity in Kabul")+xlab(" Log of Nightlights")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
+
+ parwan = sample[(sample$PROV_34_NA =="Parwan"), ]
+ g2 = ggplot()+geom_density(data = parwan, aes(log(grid_code)), alpha = 0.6) +ggtitle("Economic activity in Parwa")+xlab(" Log of Nightlights")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
+
+g3 = ggplot()+geom_density(data = a, aes(log(avg_rad)), alpha = 0.6) +ggtitle("Economic activity in the country ")+xlab(" Log of Nightlights")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
+ 
+plot_grid(g1, g2, g3)
+
+```
+
+
 #### Work in progress
 
 1. Working the nightlight(country) vs nightlights(our locations)  for economic comparison. 
 
 2. Working on population density (country) vs. population density(our locations) for density comparison.
 
-3. Requested Niall for a list of important (top 5) baseline CDR variables- for Cell Phone use+bandicoot featues for the whole country.
+3. Requested Niall for a list of important (top 5) baseline CDR variables- for Cell Phone use+bandicoot features for the whole country.
 
 
 
