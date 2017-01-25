@@ -5,8 +5,15 @@ date: "January 18, 2017"
 output: html_document
 ---
 
+
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+
+library(knitr)
+
+opts_chunk$set(echo=FALSE,
+               cache=FALSE, autodep=TRUE, cache.comments=FALSE,
+               message=FALSE, warning=FALSE, error=FALSE)
 ```
 
 ### Data Preprocessing
@@ -246,7 +253,19 @@ plot_grid(g1, g2, g3)
 
 ####Economic Activity distribution in sample vs the country.
 
-The graph below the density of nightlights from the sampled locations of Parwan and Kabul. The solid black line is the national density. All the values are plotted on the log scale. 
+The graph below the density of nightlights from the sampled locations of Parwan and Kabul. The solid black line is the national density. All the values are plotted on the log scale.
+
+
+A brief overview of the steps taken for the analysis below :
+
+1. All the locations where the sample was collected from are plotted on the map.
+2. A radius around each point is calculated (using the simple \[ \pi*r^2 = Area \] formula)
+3. The datapoints within this buffer zone are used to calculate sample economic activity and sample population density.
+4. These data points are compared to the whole country then using density plots. (Note - Although 0 points are excluded there is still a large number of very low points which pushes the country levels to the lower side)
+
+
+ ![test](C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\sample_loc.png)
+ 
 ```{r}
 #loading files of our sample population 
 
@@ -263,7 +282,7 @@ loc = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators
 # 
 # sample[ (sample$longitude == 69.11376) & (sample$latitude == 34.45709) , ]
 # 
-# a = a[!a$avg_rad < 0,]
+ a = a[!a$avg_rad < 0,]
 # 
 # ggplot(sample.1, aes(log(grid_code), fill = PROV_34_NA )) + geom_density(alpha = .5) + geom_density(data = a , aes(avg_rad))
 #   
@@ -273,11 +292,19 @@ g1 = ggplot () +geom_density(data = sample.1 , aes(log(grid_code), fill = PROV_3
 
 g1
 ```
+  In line with expectation the t test shows that the null hypothesis is rejected and the sampled group and national levels are not exactly comparable. There can be multiple factors explaining this difference . Zero and negative levels have been expluded from the analysis. 
+```{r}
+t.test(a$avg_rad, sample$grid_code, paired=FALSE, var.equal = FALSE,alternative = c("two.sided") )
+
+```
+  
+  
   
   
   A multiplot of the same data 
 ```{r}
 
+library(cowplot)
 kabul = sample[(sample$PROV_34_NA =="Kabul"), ]
  g1 = ggplot()+geom_density(data = kabul , aes(log(grid_code) ), alpha = 0.6) +ggtitle("Economic activity in Kabul")+xlab(" Log of Nightlights")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
 
@@ -289,6 +316,89 @@ g3 = ggplot()+geom_density(data = a, aes(log(avg_rad)), alpha = 0.6) +ggtitle("E
 plot_grid(g1, g2, g3)
 
 ```
+
+###### Population density plots
+
+```{r}
+
+sample = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\pop_density_sampled.csv")
+
+a = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\\\Pop_density_full_AF.csv")
+
+sample.1 = sample[!(sample$PROV_34_NA =="Kapisa"), ]
+a = a[!(a$grid_code == 0), ]
+#ggplot(sample.1, aes(log(grid_code), fill = PROV_34_NA )) + geom_density(alpha = .5)
+
+
+
+library(ggplot2)
+
+g1 = ggplot () +geom_density(data = sample.1 , aes(log(grid_code), fill = PROV_34_NA ), alpha = 0.6) + geom_density(data = a , aes(log(grid_code)), size = 0.8)+ggtitle("Log of population density in sampled location vs the country")+xlab(" Log of Population Density")+ ylab ("Density")
+
+g1
+
+ggplot(sample.1, aes(log(grid_code), fill = PROV_34_NA )) + geom_density(alpha = .5) 
+
+
+
+```
+In line with expectation the t test shows that the null hypothesis is rejected and the sampled group and national levels are not exactly comparable. There can be multiple factors explaining this difference . Zero levels have been expluded from the analysis. 
+```{r}
+test = t.test(a$grid_code, sample$grid_code, paired=FALSE, var.equal = FALSE,alternative = c("two.sided") )
+library(pander)
+pander(test)
+
+t.test(a$grid_code, sample$grid_code, paired=FALSE, var.equal = FALSE,alternative = c("two.sided") )
+```
+
+
+
+Multiplot of the same data
+
+```{r}
+
+
+library(cowplot)
+kabul = sample[(sample$PROV_34_NA =="Kabul"), ]
+ g1 = ggplot()+geom_density(data = kabul , aes(log(grid_code) ), alpha = 0.6) +ggtitle("Population Density in Kabul")+xlab(" Log of Population Density")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
+
+ parwan = sample[(sample$PROV_34_NA =="Parwan"), ]
+ g2 = ggplot()+geom_density(data = parwan, aes(log(grid_code)), alpha = 0.6) +ggtitle("Population Density in Parwa")+xlab(" Log of Population Density")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
+
+g3 = ggplot()+geom_density(data = a, aes(log(grid_code)), alpha = 0.6) +ggtitle("Population Density in the country ")+xlab(" Log of Population Density")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
+ 
+plot_grid(g1, g2, g3)
+
+```
+
+
+##Differential attrition rates inusing Baseline and Endline survey results
+
+```{r}
+bl = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Sayara\\alldata_clean\\highRez_baseline_hhroster_clean.csv")
+
+el =  read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Sayara\\alldata_clean\\highRez_endline_hhroster_clean.csv")
+
+#comparing various characteristics across endline and baseline
+
+```
+####Gender based attrition
+```{r}
+
+a = as.data.frame(table(  bl$Q1_05_))
+a = a[-1,]
+colnames(a)[2] = "Base_line"
+b = as.data.frame(table(  el$Q1_05_))
+b = b[-1,]
+colnames(b)[2] = "End_line"
+test = merge(a,b, by = "Var1")
+
+test
+melt =  melt(test, id = c("Var1"))
+
+ggplot(melt, aes(x = variable, y = value, fill=Var1)) + geom_bar( stat = "identity") +scale_fill_brewer(palette = "Set1")+labs(x=NULL, y=NULL)
+```
+
 
 
 #### Work in progress
@@ -309,6 +419,13 @@ plot_grid(g1, g2, g3)
 
 7. Panel  for demographic, economic and shock comparison across the datasets. 
 ```{r}
+
+
+
+
+
+
+
 
 
 
