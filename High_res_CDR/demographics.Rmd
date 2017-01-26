@@ -409,11 +409,7 @@ g1
 
 
 ```
-
-
 ####Age wise attrition 
-
-
 To check if a significant portion of a certain age group is leaving the study we chek the density plot. The two groups are observed to very similar. 
 
 ```{r}
