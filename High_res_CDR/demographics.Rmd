@@ -72,6 +72,7 @@ library(plyr)
 a = count(df, "respid")
 df = merge(a, df, by = "respid")
 ```
+
 #### Age Pyramid comparison across NRVA and Baseline.
 
 ```{r echo =FALSE, warning=FALSE, error=FALSE}
@@ -145,7 +146,9 @@ base = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicator
 
 
 ```
+
 #### Age Pyramid and Gender comparison of NRVA and Baseline.
+
 ```{r echo =FALSE, warning=FALSE, error=FALSE}
 
 ###plotting NRVA survey stuff
@@ -187,7 +190,7 @@ melt1$age_bracket <- factor(melt1$age_bracket, levels = melt1$age_bracket)
 
 #### Household size comparison between NRVA and Baseline
 
-Note to jake - We can choose the kind of plot we want to display, a simple stacked bar graph looks little too colourful, maybe I can make it greyscale. Here are few other ways of vizualizing the same data. Data labels are also attached for easy comparison. if you feel they are unnecessary I can get rid of it.
+Note to jake - We can choose the kind of plot we want to display, a simple stacked bar graph looks little too colourful, maybe I can make it greyscale. Here are few other ways of visualizing the same data. Data labels are also attached for easy comparison. if you feel they are unnecessary I can get rid of it.
 
 The two sample t test with a very high p value suggest that null hypothesis cannot be rejected and the two groups are significantly similar
 ```{r echo =FALSE, warning=FALSE, error=FALSE}
@@ -217,8 +220,21 @@ sig = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\ESOC\\Afghanistan\\
 
 sig<-sig[!(sig$year < 2010 | sig$year > 2014),]
 
+
+
+pop = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\ESOC\\Afghanistan\\OAPA Lessons Learned Study\\Raw Data\\Population\\population_398.csv")
+
+sig = merge(sig, pop, by = "distid")
+
+sig$vio_per_capita = sig$acts/sig$population*1000000
+
 kabul = sig[sig$province =="Kabul"   ,]
 parwan = sig[sig$province =="Parwan"   ,]
+
+
+#####selecting only those values in the country which are greater than the minimum of 2 violent acts per month. (Medians monthly violence are computed and the lower of the two values is taken)
+
+sig.1<-sig[!(sig$acts < 3 | sig$province == "Kabul" | sig$province == "Parwan"),]
 
 a =as.data.frame(   aggregate(kabul$acts~kabul$year,
   sum,
@@ -246,10 +262,30 @@ plot_grid(g1, g2, g3)
 
 ```
 
+####Per  capita violence in Kabul, Parwan and the rest of Afghanistan.
+
+This figure includes only those values in the country which are greater than a minimum of 2 violent acts per month. (Medians monthly violence is computed and the lower between kabul and Parwan is taken). Kabul and Parwan are excluded from country level violence calculations.
+
+The figure below deceptively looks like Kabul and Parwan have lesser violence as compared to the rest of the country (when Kabul and Parwan are excluded from the data and all data points where monthly violence is lesser than 2 is excluded)
+
+The same figure plotted with raw values looks very different and shows a different trend (makes it look like Kabul and Parwan have much higher levels of violence). Whereas when per capita values are plotted the trend is the opposite. Excluding or including districts below 2 violent acts did not make much difference. did not make significant difference to the density plots.
+
+```{r}
+
+g1 = ggplot () +geom_density(data = sig.1, aes(log(vio_per_capita) ), alpha = 0.6) + geom_density(data = kabul , aes(log(vio_per_capita), color = "Kabul"), size = 0.8)+geom_density(data = parwan , aes(log(vio_per_capita), color = "Parwan"), size = 0.8)+ggtitle("Per Capita violence")+xlab(" Log Per Capita Monthly Violence")+ ylab ("Density")
+
+g2 = ggplot () +geom_density(data = sig, aes(log(acts) ), alpha = 0.6) + geom_density(data = kabul , aes(log(acts), color = "Kabul"), size = 0.8)+geom_density(data = parwan , aes(log(acts), color = "Parwan"), size = 0.8)+ggtitle("Raw Violence")+xlab(" Log Per Capita Monthly Violence")+ ylab ("Density")
+
+plot_grid(g1, g2)
+```
 
 
 
 
+```{r}
+
+
+```
 
 
 
@@ -296,7 +332,7 @@ g1
 ```
   
   
-  In line with expectation the t test shows that the null hypothesis is rejected and the sampled group and national levels are NOT exactly comparable. There can be multiple factors explaining this difference . Zero and negative levels have been expluded from the analysis. 
+  In line with expectation the t test shows that the null hypothesis is rejected and the sampled group and national levels are NOT exactly comparable. There can be multiple factors explaining this difference . Zero and negative levels have been excluded from the analysis. 
   
   
 ```{r}
@@ -327,7 +363,7 @@ plot_grid(g1, g2, g3)
 
 ###### Population density plots.
 
-Using a similar methodology as outlined in the economic activity section above, we compare population densities of the sampled locations in Kabul, Parwan vs the rest of the coutnry. 
+Using a similar methodology as outlined in the economic activity section above, we compare population densities of the sampled locations in Kabul, Parwan vs the rest of the country. 
 
 ```{r}
 
@@ -349,7 +385,7 @@ g1
 
 ```
 
-In line with expectation the t test shows that the null hypothesis is rejected and the sampled group and national levels are not exactly comparable. There can be multiple factors explaining this difference, the primary one being a large number of very small values of far flung remote areas which are being compared to electrified and relatively progressive zones in Kabul and Parwan. Zero levels have been expluded from the analysis. 
+In line with expectation the t test shows that the null hypothesis is rejected and the sampled group and national levels are not exactly comparable. There can be multiple factors explaining this difference, the primary one being a large number of very small values of far flung remote areas which are being compared to electrified and relatively progressive zones in Kabul and Parwan. Zero levels have been excluded from the analysis. 
 
 ```{r}
 test = t.test(a$grid_code, sample$grid_code, paired=FALSE, var.equal = FALSE,alternative = c("two.sided") )
@@ -385,6 +421,7 @@ el =  read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators
 #comparing various characteristics across endline and baseline
 
 ```
+
 ####Gender based attrition
 
 There seems to be a little bit of a drop in the female population by the end of the surveys. 
@@ -409,8 +446,12 @@ g1
 
 
 ```
+
+
 ####Age wise attrition 
-To check if a significant portion of a certain age group is leaving the study we chek the density plot. The two groups are observed to very similar. 
+
+
+To check if a significant portion of a certain age group is leaving the study we check the density plot. The two groups are observed to very similar. 
 
 ```{r}
 test =as.data.frame(   cbind(el$Q1_06_, bl$Q1_06_))
@@ -422,6 +463,7 @@ g2 = ggplot(data = test, aes(value, fill = variable))+geom_density( alpha = 0.4 
 g2
 
 ```
+
 ####Job Sector wise attrition 
 
 ```{r}
