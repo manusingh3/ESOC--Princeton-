@@ -1,0 +1,638 @@
+---
+title: "Robustness Checks"
+author: "Manu"
+date: "January 18, 2017"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+
+```{r setup, include=FALSE}
+
+library(knitr)
+
+opts_chunk$set(echo=FALSE,
+               cache=FALSE, autodep=TRUE, cache.comments=FALSE,
+               message=FALSE, warning=FALSE, error=FALSE)
+```
+
+## Demographic Comparisions
+
+Load clean and preprocess the file to create the three required variables:
+
+1. Size of household (size)
+2. Gender ratio of household (gender)
+3. Age pyramid- (Age)
+
+As the NRVA dataset being used now is about 3 years old (data collected in 2012) thus infants younger than 3 are excluded.Adults older than 55 are excluded from the sample as an upper limit.
+```{r echo =FALSE, warning=FALSE, error=FALSE, results='hide'}
+
+df = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Sayara\\baseline\\highRez_baseline_hhroster.csv")
+
+head(df)
+d = df
+
+## subtract 3 from everybodays age
+df$Q_1_06_ = df$Q_1_06_ - 3 
+
+
+#Exclude children and very old ppl
+df<-df[!(df$Q_1_06_ < 0 | df$Q_1_06_ > 55),]
+
+
+df$male = ifelse(df$Q_1_05_ =="Male",1,0)
+df$female = ifelse(df$Q_1_05_ =="Female",1,0)
+#total males
+a = as.data.frame (tapply(df$male, df$respid, FUN = sum))
+a$respid = rownames(a)
+colnames(a) = c("tot_male", "respid")
+#head(a)
+#total females
+b = as.data.frame (tapply(df$female, df$respid, FUN = sum))
+
+b$respid = rownames(b)
+colnames(b) = c("tot_female", "respid")
+#head(b)
+
+temp = merge(a, b, by = "respid")
+temp$gender_ratio = temp$tot_male/temp$tot_female
+
+#head(temp)
+
+df = merge (temp, df, by = "respid")
+```
+
+
+```{r echo =FALSE, warning=FALSE, error=FALSE}
+
+###Calculating Household sizes
+
+library(plyr)
+#head(df)
+a = count(df, "respid")
+df = merge(a, df, by = "respid")
+```
+
+#### Age Pyramid comparison across NRVA and Baseline.
+
+```{r echo =FALSE, warning=FALSE, error=FALSE}
+##### processing data for comparison with NRVA
+
+
+#age Pyramid
+df$age_bracket <- as.factor( as.numeric( cut(df$Q_1_06_,breaks = seq(0, 55, by = 5))))
+
+a = as.data.frame(table(df$age_bracket))
+
+write.csv(a, file = "age_pyr_BL.csv")
+
+##combine features from both the files and display
+
+total = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\age_pyr_total.csv")
+
+```
+The plot below shows distribution of age groups (combining results from both men and women) in NRVA as compared to the base line survey. The t test results suggest that the null hypothesis cannot be rejected and that the two samples are quite similar
+```{r echo =FALSE, warning=FALSE, error=FALSE}
+#Reshaping and plotting data
+library(reshape2)
+
+
+
+melt =  melt(total, id = c("X"))
+t.test(data = melt, value~variable, var.equal=FALSE, paired=FALSE)
+
+melt$value = ifelse(melt$variable =="NRVA",melt$value*-1,melt$value)
+melt$X <- factor(melt$X, levels = melt$X)
+
+library(ggplot2)
+
+
+ ggplot(data=melt,aes(x=X, y = value,fill=variable)) +
+  geom_bar(data=melt[melt[["variable"]] =="NRVA",], stat = "identity" )+
+  geom_bar(data=melt[melt[["variable"]] == "BASE_LINE",] , stat = "identity") +   scale_y_continuous(breaks=seq(-40,40,2),labels=abs(seq(-40,40,2)))+coord_flip()+scale_fill_brewer(palette = "Set1") +theme_bw()
+
+
+
+
+```
+
+
+
+Other exploratory plots useful in comparing our sample population with NRVA population are plotted below. Here the age pyramids are broken by gender and are displayed alongside for easy comparison.
+
+(Note to jake - I have gender ratio also at this point if necessary can make a stacked bar graph for that as well.)
+
+```{r echo =FALSE, warning=FALSE, error=FALSE}
+
+df$age_bracket <- as.factor( as.numeric( cut(df$Q_1_06_,breaks = seq(0, 55, by = 5))))
+
+male =as.data.frame(   aggregate(df$male~df$age_bracket,
+  sum,
+  data=df))
+
+female =as.data.frame(   aggregate(df$female~df$age_bracket,
+  sum,
+  data=df))
+
+total = merge(male, female, by = "df$age_bracket" )
+
+#total$male_percent = (total$male)/(colSums(total$male))
+
+colnames(total) = c("age_bracket","male","female")
+
+write.csv(total, file = "age_pyr_BL_mf.csv")
+base = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\age_pyr_BL_mf.csv")
+
+
+
+```
+
+#### Age Pyramid and Gender comparison of NRVA and Baseline.
+
+```{r echo =FALSE, warning=FALSE, error=FALSE}
+
+###plotting NRVA survey stuff
+base = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\age_py_mf_NRVA.csv")
+melt =  melt(base, id = c("age_bracket"))
+#head(melt)
+melt$value = ifelse(melt$variable =="Male",melt$value*-1,melt$value)
+melt$age_bracket <- factor(melt$age_bracket, levels = melt$age_bracket)
+
+
+ g2 = ggplot(data=melt,aes(x=age_bracket, y = value,fill=variable)) + 
+  geom_bar(data=melt[melt[["variable"]] =="Male",], stat = "identity" )+geom_text(label = round(melt$value), nudge_y = 0.5)+
+  geom_bar(data=melt[melt[["variable"]] == "Female",] , stat = "identity") +   scale_y_continuous(breaks=seq(-40,40,2),labels=abs(seq(-40,40,2)))+coord_flip()+scale_fill_brewer(palette = "Set1") +theme_bw()+ggtitle("NRVA SURVEY AGE AND GENDER DISTRIBUTION")
+ 
+ 
+ #######plotting NRVA survey
+ base1 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\age_pyr_BL_mf.csv")
+melt1 =  melt(base1, id = c("age_bracket"))
+#head(melt1)
+melt1$value = ifelse(melt1$variable =="male",melt1$value*-1,melt1$value)
+melt1$age_bracket <- factor(melt1$age_bracket, levels = melt1$age_bracket)
+
+
+ g1 = ggplot(data=melt1,aes(x=age_bracket, y = value,fill=variable)) + 
+  geom_bar(data=melt1[melt1[["variable"]] =="male",], stat = "identity" )+geom_text(label = round(melt1$value), nudge_y = 0.5)+
+  geom_bar(data=melt1[melt1[["variable"]] == "female",] , stat = "identity") +   scale_y_continuous(breaks=seq(-40,40,2),labels=abs(seq(-40,40,2)))+coord_flip()+scale_fill_brewer(palette = "Set1") +theme_bw()+ggtitle("BASELINE SURVEY AGE AND GENDER DISTRIBUTION")
+
+####plotting NRVA stuff
+# require(cowplot) 
+# plot_grid(g1, g2)
+
+
+
+
+```
+
+ ![test](C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\comparison_age_gender.png)
+
+
+#### Household size comparison between NRVA and Baseline
+
+Note to jake - We can choose the kind of plot we want to display, a simple stacked bar graph looks little too colourful, maybe I can make it greyscale. Here are few other ways of visualizing the same data. Data labels are also attached for easy comparison. if you feel they are unnecessary I can get rid of it.
+
+The two sample t test with a very high p value suggest that null hypothesis cannot be rejected and the two groups are significantly similar
+```{r echo =FALSE, warning=FALSE, error=FALSE}
+hhsize = as.data.frame(table(df$freq))
+write.csv(hhsize, file = "hhsize_temp.csv")
+
+total = read.csv( "C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\HHSIZE_combined.csv")
+
+melt =  melt(total, id = c("X"))
+t.test(data = melt, value~variable, var.equal=FALSE, paired=FALSE)
+
+melt$X <- factor(melt$X, levels = melt$X)
+
+ggplot(melt, aes(x = X, y = value, fill=variable)) + geom_bar( stat = "identity", position="dodge") +scale_fill_brewer(palette = "Set1")+labs(x=NULL, y=NULL)+ ggtitle(" Household size distribution in NRVA and Baseline survey")
+
+ggplot(melt, aes(x = X, y = value, fill=variable)) + geom_bar( stat = "identity") +scale_fill_brewer(palette = "Set1")+labs(x=NULL, y=NULL)
+
+ggplot(melt, aes(x = variable, y = value, fill=X)) + geom_bar( stat = "identity") +scale_fill_brewer(palette = "Set1")+ labs(x=NULL, y=NULL)
+```
+
+##Selection into Sample
+#### Using Baseline and Endline Control sheets to describe non- selected. 
+
+The plot below indicates an obvious data issue. The objective was to understand the different mobile carrier distribution depending on weather the door was answered or not. (Question L1). The data below suggests that two things could have happened- 
+
+1. Everyone who answered the door had Roshan- not likely.
+2. The data is mislabeled- Point L1 is not captured at all. The data starts at L2. Will need to talk to Jake+Niall
+```{r}
+df = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Sayara\\baseline\\HighRez_F2F_baseline_contactsheets.csv")
+
+# Answered the door
+    
+levels(df$L2)[levels(df$L2)=="-7"] <- "Roshan"
+
+ggplot(data=df,aes(x=L2,fill=L1)) + geom_bar( )
+
+
+```
+
+
+
+
+
+
+
+
+## Geographic Comparisions
+
+#### Violence comparison in Kabul, Parwan and the rest of the country.
+The plots below are just preliminary visualizations. I will weight it by population and only consider those districts that have a certain minimum level of violence as compared to Kabul and Parwan. The figures below give an oversimplified summation of violent acts only to be used for seeing the trend . (the Y axis thus should be ignored)
+```{r echo =FALSE, warning=FALSE, error=FALSE}
+sig = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\ESOC\\Afghanistan\\OAPA Lessons Learned Study\\Clean Data\\SIGACT\\SIGACTS_FULL2.csv")
+
+sig<-sig[!(sig$year < 2010 | sig$year > 2014),]
+
+
+
+pop = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\ESOC\\Afghanistan\\OAPA Lessons Learned Study\\Raw Data\\Population\\population_398.csv")
+
+sig = merge(sig, pop, by = "distid")
+
+sig$vio_per_capita = sig$acts/sig$population*1000000
+
+kabul = sig[sig$province =="Kabul"   ,]
+parwan = sig[sig$province =="Parwan"   ,]
+
+
+#####selecting only those values in the country which are greater than the minimum of 2 violent acts per month. (Medians monthly violence are computed and the lower of the two values is taken)
+
+sig.1<-sig[!(sig$acts < 3 | sig$province == "Kabul" | sig$province == "Parwan"),]
+
+a =as.data.frame(   aggregate(kabul$acts~kabul$year,
+  sum,
+  data=a))
+
+colnames(a) = c("time", "acts")
+
+g1 = ggplot ( data = a, aes(x= time, y = (acts))) +geom_point()+geom_smooth() +ggtitle("Total yearly violent acts in KABUL")
+ 
+
+b =as.data.frame(   aggregate(parwan$acts~parwan$year,
+  sum,
+  data=parwan)) 
+colnames(b) = c("time", "acts")
+g2 = ggplot ( data = b, aes(x= time, y = (acts))) +geom_point()+geom_smooth() +ggtitle("Total yearly violent acts in PARWAN")
+
+ base =as.data.frame(   aggregate(sig$acts~sig$year,
+  sum,
+  data=sig)) 
+colnames(base) = c("time", "acts")
+g3 = ggplot ( data = base, aes(x= time, y = (acts))) +geom_point()+geom_smooth()+ ggtitle("Total yearly violent acts in the country")
+
+require(cowplot)
+plot_grid(g1, g2, g3)
+
+```
+
+####Per  capita violence in Kabul, Parwan and the rest of Afghanistan.
+
+This figure includes only those values in the country which are greater than a minimum of 2 violent acts per month. (Medians monthly violence is computed and the lower between kabul and Parwan is taken). Kabul and Parwan are excluded from country level violence calculations.
+
+The first figure shows the raw violence density which seems to indicate that Kabul is quite a bit more violent as compared to the rest of the country. When adjusted for violence per capita this effect is seen to disappear. It must be noted in the figures below only districts with have more than two violent acts per month are included to ensure the graph is not excessively skewed to the left. 
+
+
+```{r}
+
+g1 = ggplot () +geom_density(data = sig.1, aes(log(vio_per_capita) ), alpha = 0.6) + geom_density(data = kabul , aes(log(vio_per_capita), color = "Kabul"), size = 0.8)+geom_density(data = parwan , aes(log(vio_per_capita), color = "Parwan"), size = 0.8)+ggtitle("Per Capita violence")+xlab(" Log Per Capita Monthly Violence")+ ylab ("Density")
+
+g2 = ggplot () +geom_density(data = sig, aes(log(acts) ), alpha = 0.6) + geom_density(data = kabul , aes(log(acts), color = "Kabul"), size = 0.8)+geom_density(data = parwan , aes(log(acts), color = "Parwan"), size = 0.8)+ggtitle("Raw Violence")+xlab(" Log Per Capita Monthly Violence")+ ylab ("Density")
+
+plot_grid(g2, g1)
+```
+
+
+
+
+```{r}
+
+
+```
+
+
+
+####Economic Activity distribution in sample vs the country.
+
+The graph below the density of nightlights from the sampled locations of Parwan and Kabul. The solid black line is the national density. All the values are plotted on the log scale.
+
+
+A brief overview of the steps taken for the analysis below :
+
+1. All the locations where the sample was collected from are plotted on the map.
+2. A radius around each point is calculated (using the simple formula \[ \pi*r^2 = Area \] )
+3. The datapoints within this buffer zone are used to calculate sample economic activity and sample population density.
+4. These data points are compared to the whole country then using density plots. (Note - Although 0 points are excluded there is still a large number of very low points which pushes the country levels to the lower side)
+
+
+ ![test](C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\sample_loc.png)
+ 
+```{r}
+#loading files of our sample population 
+
+sample = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\oct15_nl_sample_loc.csv")
+
+a = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\ESOC\\Afghanistan\\OAPA Lessons Learned Study\\Clean Data\\Nightlights_Eco_Ind\\district_level_complete_nightlights\\dist_NL_Oct15.csv")
+
+sample.1 = sample[!(sample$PROV_34_NA =="Kapisa"), ]
+#ggplot(sample.1, aes(log(grid_code), fill = PROV_34_NA )) + geom_density(alpha = .5)
+
+loc = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\lat_long_sample.csv")
+
+# colnames(a) = c("X", "DISTID", "longitude", "latitude", "avg_rad")
+# 
+# sample[ (sample$longitude == 69.11376) & (sample$latitude == 34.45709) , ]
+# 
+ a = a[!a$avg_rad < 0,]
+# 
+# ggplot(sample.1, aes(log(grid_code), fill = PROV_34_NA )) + geom_density(alpha = .5) + geom_density(data = a , aes(avg_rad))
+#   
+#   geom_density(data = a, aes(log(avg_rad), alpha = .5))
+
+g1 = ggplot () +geom_density(data = sample.1 , aes(log(grid_code), fill = PROV_34_NA ), alpha = 0.6) + geom_density(data = a , aes(log(avg_rad)), size = 0.8)+ggtitle("Economic activity in sampled location vs the country")+xlab(" Log of Nightlights")+ ylab ("Density")
+
+g1
+```
+  
+  
+  In line with expectation the t test shows that the null hypothesis is rejected and the sampled group and national levels are NOT exactly comparable. There can be multiple factors explaining this difference . Zero and negative levels have been excluded from the analysis. 
+  
+  
+```{r}
+t.test(a$avg_rad, sample$grid_code, paired=FALSE, var.equal = FALSE,alternative = c("two.sided") )
+
+```
+  
+  
+  
+  
+#### Multiplot of the same data 
+  
+  
+```{r}
+
+library(cowplot)
+kabul = sample[(sample$PROV_34_NA =="Kabul"), ]
+ g1 = ggplot()+geom_density(data = kabul , aes(log(grid_code) ), alpha = 0.6) +ggtitle("Economic activity in Kabul")+xlab(" Log of Nightlights")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
+
+ parwan = sample[(sample$PROV_34_NA =="Parwan"), ]
+ g2 = ggplot()+geom_density(data = parwan, aes(log(grid_code)), alpha = 0.6) +ggtitle("Economic activity in Parwa")+xlab(" Log of Nightlights")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
+
+g3 = ggplot()+geom_density(data = a, aes(log(avg_rad)), alpha = 0.6) +ggtitle("Economic activity in the country ")+xlab(" Log of Nightlights")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
+ 
+plot_grid(g1, g2, g3)
+
+```
+
+###### Population density plots.
+
+Using a similar methodology as outlined in the economic activity section above, we compare population densities of the sampled locations in Kabul, Parwan vs the rest of the country. 
+
+```{r}
+
+sample = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\pop_density_sampled.csv")
+
+a = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\\\Pop_density_full_AF.csv")
+
+sample.1 = sample[!(sample$PROV_34_NA =="Kapisa"), ]
+a = a[!(a$grid_code == 0), ]
+#ggplot(sample.1, aes(log(grid_code), fill = PROV_34_NA )) + geom_density(alpha = .5)
+
+
+
+library(ggplot2)
+
+g1 = ggplot () +geom_density(data = sample.1 , aes(log(grid_code), fill = PROV_34_NA ), alpha = 0.6) + geom_density(data = a , aes(log(grid_code)), size = 0.8)+ggtitle("Log of population density in sampled location vs the country")+xlab(" Log of Population Density")+ ylab ("Density")
+
+g1
+
+```
+
+In line with expectation the t test shows that the null hypothesis is rejected and the sampled group and national levels are not exactly comparable. There can be multiple factors explaining this difference, the primary one being a large number of very small values of far flung remote areas which are being compared to electrified and relatively progressive zones in Kabul and Parwan. Zero levels have been excluded from the analysis. 
+
+```{r}
+test = t.test(a$grid_code, sample$grid_code, paired=FALSE, var.equal = FALSE,alternative = c("two.sided") )
+
+```
+
+#### Multiplot of the same data
+
+```{r}
+
+
+library(cowplot)
+kabul = sample[(sample$PROV_34_NA =="Kabul"), ]
+ g1 = ggplot()+geom_density(data = kabul , aes(log(grid_code) ), alpha = 0.6) +ggtitle("Population Density in Kabul")+xlab(" Log of Population Density")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
+
+ parwan = sample[(sample$PROV_34_NA =="Parwan"), ]
+ g2 = ggplot()+geom_density(data = parwan, aes(log(grid_code)), alpha = 0.6) +ggtitle("Population Density in Parwa")+xlab(" Log of Population Density")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
+
+g3 = ggplot()+geom_density(data = a, aes(log(grid_code)), alpha = 0.6) +ggtitle("Population Density in the country ")+xlab(" Log of Population Density")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
+ 
+plot_grid(g1, g2, g3)
+
+```
+
+
+##Differential attrition 
+
+```{r}
+bl = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Sayara\\alldata_clean\\highRez_baseline_hhroster_clean.csv")
+
+el =  read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Sayara\\alldata_clean\\highRez_endline_hhroster_clean.csv")
+
+bl$gen_id = paste(bl$respid, bl$adultid, sep = "")
+el$gen_id = paste(el$respid, el$adultid, sep = "")
+
+#Understand if those present in BL are also in el
+# el_respid = unique(el$respid)
+# bl_respid = unique(bl$respid)
+# test = as.data.frame(cbind(el_respid, bl_respid))
+# test$present = ifelse(test$el_respid %in% test$bl_respid, 1, 0)
+
+bl$present_el = ifelse(bl$gen_id %in% el$gen_id, 1, 0)
+el$present_el = ifelse(el$gen_id %in% bl$gen_id, 1, 0)
+```
+
+####Gender based attrition
+
+There seems to be a little bit of a drop in the female and male population by the end of the surveys. But this drop does not seem to be statistically significant.  
+```{r}
+
+a = as.data.frame(table(bl$Q1_05_))
+a = a[-1,]
+colnames(a)[2] = "Base_line"
+temp = el[el$present_el ==1,]
+b = as.data.frame(table(  temp$Q1_05_))
+b = b[-1,]
+colnames(b)[2] = "End_line"
+test = merge(a,b, by = "Var1")
+
+
+melt =  melt(test, id = c("Var1"))
+
+g1 = ggplot(melt, aes(x = variable, y = value, fill=Var1)) + geom_bar( stat = "identity") +scale_fill_brewer(palette = "Set1")+labs(x=NULL, y=NULL)
+
+g1
+ t.test(test$Base_line, test$End_line, paired=FALSE, var.equal = FALSE,alternative = c("two.sided") )
+
+
+
+```
+
+
+####Age wise attrition 
+
+
+To check if a significant portion of a certain age group is leaving the study we check the density plot. The two groups are observed to very similar. No particular age group is seen quitting the study at an observable rate. 
+
+```{r}
+#temp = el[el$present_el ==1,]
+library(gtools)
+df1 <- bl[,c("gen_id","Q1_06_")]
+df1$type = "Baseline"
+df2 <- temp[,c("gen_id","Q1_06_")]
+df2$type = "Endline"
+df =  smartbind(df1, df2)
+
+
+test = melt(df, id.vars = c("gen_id", "type"))
+#head(test)
+g2 = ggplot(data = df, aes(Q1_06_, fill = type))+geom_density( alpha = 0.4 )+ggtitle("Age distribution in End line and baseline surveys")+xlab(" Age")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
+
+g2
+
+```
+
+####Job Sector wise attrition 
+As expected there is a little attrition in most of the job sectors. this difference is not statistically significant. It is interesting to note almost no attrition in the agricultural sector.In the two plots below we explore:
+
+1. Comparing the entire population that was starting out in baseline to the population in endline.
+2. Comparing groupwise attrition.
+```{r}
+
+####Comparing the entire population that was starting out in baseline
+a = as.data.frame(table(  bl$Q1_08_))
+a = a[-1,]
+colnames(a)[2] = "Base_line"
+b = as.data.frame(table(  temp$Q1_08_))
+b = b[-1,]
+colnames(b)[2] = "End_line"
+test = merge(a,b, by = "Var1")
+melt =  melt(test, id = c("Var1"))
+```
+
+```{r}
+
+ggplot(melt, aes(x = Var1, y = value, fill = variable)) + geom_bar( stat = "identity", position = "dodge") +scale_fill_brewer(palette = "Set1")+labs(x=NULL, y=NULL)+ theme(legend.text=element_text(size=10))+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+ t.test(test$Base_line, test$End_line, paired=FALSE, var.equal = FALSE,alternative = c("two.sided") )
+
+```
+
+```{r}
+
+df1 <- bl[,c("gen_id","Q1_08_")]
+#df1$type = "Baseline"
+df2 <- temp[,c("gen_id","Q1_08_")]
+#df2$type = "Endline"
+df =  merge(df1, df2, by = "gen_id")
+
+melt =  melt(df, id = c("gen_id"))
+
+melt = melt[!melt$value == "",]
+ggplot(melt, aes(x = value, fill = variable)) + geom_bar(position = "dodge") +scale_fill_brewer(palette = "Set1")+labs(x=NULL, y=NULL)+ theme(legend.text=element_text(size=10))+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+```
+
+
+
+
+
+
+
+####Employment Status wise attrition
+ There is attrition in most employment types as expected. But these differences are not found to be statistically significant. There is no attrition virtually in individuals that are self- employed or unpaid- family workers. Again it is not unexpected that salaried workers have the highest probabilty of quitting the study. 
+```{r}
+a = as.data.frame(table(  bl$Q1_09_))
+a = a[-1,]
+colnames(a)[2] = "Base_line"
+b = as.data.frame(table(  temp$Q1_09_))
+b = b[-1,]
+colnames(b)[2] = "End_line"
+test = merge(a,b, by = "Var1")
+melt =  melt(test, id = c("Var1"))
+g4 = ggplot(melt, aes(x = Var1, y = value, fill = variable)) + geom_bar( stat = "identity", position = "dodge") +scale_fill_brewer(palette = "Set1")+labs(x=NULL, y=NULL)+ theme(legend.text=element_text(size=10))+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+g4
+
+t.test(test$Base_line, test$End_line, paired=FALSE, var.equal = FALSE,alternative = c("two.sided") )
+
+
+```
+
+####Income level wise attrition 
+
+As expected in the higher income brackets we observe a lot more attrition. but again these differences are not statistically significant. 
+
+```{r}
+
+a = as.data.frame(table(bl$Q1_10_))
+a = a[-(1:3),]
+colnames(a)[2] = "Base_line"
+b = as.data.frame(table(el$Q1_10_))
+b = b[-(1:3),]
+colnames(b)[2] = "End_line"
+test = merge(a,b, by = "Var1")
+melt =  melt(test, id = c("Var1"))
+
+
+g5 = ggplot(melt, aes(x = Var1, y = value,  group=2)) + geom_point(aes(colour= variable ))+geom_line( aes(x = Var1, y = value,  group=variable, color = variable), size = 1.5) +scale_fill_brewer(palette = "Set1")+labs(x=NULL, y=NULL)+ theme(legend.text=element_text(size=10))+theme(axis.text.x = element_text(, size = 8,angle = 90, hjust = 1))
+
+g5
+
+t.test(test$Base_line, test$End_line, paired=FALSE, var.equal = FALSE,alternative = c("two.sided") )
+
+
+```
+
+
+##Selection into sample
+
+```{r}
+
+
+
+
+```
+
+
+
+#### Work in progress
+
+1. Cell phone use- compare sample to full Roshan network
+
+2. Selection into sample - Roshan vs Non Roshan Users - Baseline and endline control sheets - problems to be discussed with Jake.
+
+3. Differential Attrition CDR - Compare on the same lines of cellphone use for baseline and endline surveys.
+
+4.Ethnic mix - simple population description. 
+```{r}
+
+
+
+
+
+
+
+
+
+
+
+```
