@@ -3,8 +3,8 @@ title: "Robustness Checks"
 author: "Manu"
 date: "January 18, 2017"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 
@@ -242,8 +242,10 @@ ggplot(data=df,aes(x=L2,fill=L1)) + geom_bar( )
 ## Geographic Comparisions
 
 #### Violence comparison in Kabul, Parwan and the rest of the country.
-The plots below are just preliminary visualizations. I will weight it by population and only consider those districts that have a certain minimum level of violence as compared to Kabul and Parwan. The figures below give an oversimplified summation of violent acts only to be used for seeing the trend . (the Y axis thus should be ignored)
+The plots below are just preliminary visualizations. I will weight it by population and only consider those districts that have a certain minimum level of violence as compared to Kabul and Parwan. The figures below give an simplified summation of violent acts from 2010 to 2014 for the top cities in Afghanistan (ordered by population). The numbers are aggregated at district levels.
 ```{r echo =FALSE, warning=FALSE, error=FALSE}
+ require(cowplot)
+
 sig = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\ESOC\\Afghanistan\\OAPA Lessons Learned Study\\Clean Data\\SIGACT\\SIGACTS_FULL2.csv")
 
 sig<-sig[!(sig$year < 2010 | sig$year > 2014),]
@@ -255,40 +257,66 @@ pop = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\ESOC\\Afghanistan\\
 sig = merge(sig, pop, by = "distid")
 
 sig$vio_per_capita = sig$acts/sig$population*1000000
+sig$Date <- as.Date(paste(sig$month, "01", sig$year, sep="_"),  format = "%m_%d_%Y")
 
-kabul = sig[sig$province =="Kabul"   ,]
-parwan = sig[sig$province =="Parwan"   ,]
+kabul = sig[sig$district =="Kabul"   ,]
+parwan = sig[sig$district =="Chaharikar"   ,]
+kandahar = sig[sig$district =="Kandahar"   ,]
+herat = sig[sig$district =="Hirat"   ,]
+mazar = sig[sig$district =="Mazari Sharif"   ,]
+kunduz = sig[sig$district =="Kunduz"   ,]
 
+taluqan = sig[sig$district =="Taluqan"   ,]
+baghran = sig[sig$district =="Baghran"   ,]
+jalabad = sig[sig$district =="Jalalabad"   ,]
+puli = sig[sig$district =="Puli Khumri"   ,]
+
+g1 = ggplot ( data = kabul, aes(x= Date, y = (vio_per_capita))) +geom_point()+geom_smooth(span = 0.5) +ggtitle(" Monthly violence trend Kabul")
+g2 = ggplot ( data = parwan, aes(x= Date, y = (vio_per_capita))) +geom_point()+geom_smooth(span = 0.5) +ggtitle(" Monthly violence trend Parwan(Chaharikar)")
+g3 = ggplot ( data = kandahar, aes(x= Date, y = (vio_per_capita))) +geom_point()+geom_smooth(span = 0.5) +ggtitle(" Monthly violence trend Kandhahar")
+g4 = ggplot ( data = herat, aes(x= Date, y = (vio_per_capita))) +geom_point()+geom_smooth(span = 0.5) +ggtitle(" Monthly violence trend Herat")
+g5 = ggplot ( data = mazar, aes(x= Date, y = (vio_per_capita))) +geom_point()+geom_smooth(span = 0.5) +ggtitle(" Monthly violence trend Mazar-i-Sharif")
+g6 = ggplot ( data = kunduz, aes(x= Date, y = (vio_per_capita))) +geom_point()+geom_smooth(span = 0.5) +ggtitle(" Monthly violence trend Kunduz")
+g7 = ggplot ( data = taluqan, aes(x= Date, y = (vio_per_capita))) +geom_point()+geom_smooth(span = 0.5) +ggtitle(" Monthly violence trend Taluqan")
+g8 = ggplot ( data = baghran, aes(x= Date, y = (vio_per_capita))) +geom_point()+geom_smooth(span = 0.5) +ggtitle(" Monthly violence trend Baghran(Hilmand)")
+g9 = ggplot ( data = jalabad, aes(x= Date, y = (vio_per_capita))) +geom_point()+geom_smooth(span = 0.5) +ggtitle(" Monthly violence trend Jalalabad")
+g10 = ggplot ( data = puli, aes(x= Date, y = (vio_per_capita))) +geom_point()+geom_smooth(span = 0.5) +ggtitle(" Monthly violence trend Puli Khumri")
+
+#plot_grid(g1, g2, g3, g4, g5, g6, g7, g8, g9, g10)
 
 #####selecting only those values in the country which are greater than the minimum of 2 violent acts per month. (Medians monthly violence are computed and the lower of the two values is taken)
 
-sig.1<-sig[!(sig$acts < 3 | sig$province == "Kabul" | sig$province == "Parwan"),]
+ sig.1<-sig[!(sig$acts < 3 | sig$province == "Kabul" | sig$province == "Parwan"),]
+# 
+# a =as.data.frame(   aggregate(kabul$acts~kabul$year,
+#   sum,
+#   data=a))
+# 
+# colnames(a) = c("time", "acts")
+# 
+# g1 = ggplot ( data = a, aes(x= time, y = (acts))) +geom_point()+geom_smooth() +ggtitle("Total yearly violent acts in KABUL")
+#  
+# 
+# b =as.data.frame(   aggregate(parwan$acts~parwan$year,
+#   sum,
+#   data=parwan)) 
+# colnames(b) = c("time", "acts")
+# g2 = ggplot ( data = b, aes(x= time, y = (acts))) +geom_point()+geom_smooth() +ggtitle("Total yearly violent acts in PARWAN")
+# 
+#  base =as.data.frame(   aggregate(sig$acts~sig$year,
+#   sum,
+#   data=sig)) 
+# colnames(base) = c("time", "acts")
+# g3 = ggplot ( data = base, aes(x= time, y = (acts))) +geom_point()+geom_smooth()+ ggtitle("Total yearly violent acts in the country")
 
-a =as.data.frame(   aggregate(kabul$acts~kabul$year,
-  sum,
-  data=a))
-
-colnames(a) = c("time", "acts")
-
-g1 = ggplot ( data = a, aes(x= time, y = (acts))) +geom_point()+geom_smooth() +ggtitle("Total yearly violent acts in KABUL")
- 
-
-b =as.data.frame(   aggregate(parwan$acts~parwan$year,
-  sum,
-  data=parwan)) 
-colnames(b) = c("time", "acts")
-g2 = ggplot ( data = b, aes(x= time, y = (acts))) +geom_point()+geom_smooth() +ggtitle("Total yearly violent acts in PARWAN")
-
- base =as.data.frame(   aggregate(sig$acts~sig$year,
-  sum,
-  data=sig)) 
-colnames(base) = c("time", "acts")
-g3 = ggplot ( data = base, aes(x= time, y = (acts))) +geom_point()+geom_smooth()+ ggtitle("Total yearly violent acts in the country")
-
-require(cowplot)
-plot_grid(g1, g2, g3)
+ require(cowplot)
+# plot_grid(g1, g2, g3)
 
 ```
+ ![test](C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\ML\\vio_plot.png)
+
+
+
 
 ####Per  capita violence in Kabul, Parwan and the rest of Afghanistan.
 
@@ -299,11 +327,11 @@ The first figure shows the raw violence density which seems to indicate that Kab
 
 ```{r}
 
-g1 = ggplot () +geom_density(data = sig.1, aes(log(vio_per_capita) ), alpha = 0.6) + geom_density(data = kabul , aes(log(vio_per_capita), color = "Kabul"), size = 0.8)+geom_density(data = parwan , aes(log(vio_per_capita), color = "Parwan"), size = 0.8)+ggtitle("Per Capita violence")+xlab(" Log Per Capita Monthly Violence")+ ylab ("Density")
+g1 = ggplot () +geom_density(data = sig.1, aes(log(vio_per_capita) ), alpha = 0.9) + geom_density(data = kabul , aes(log(vio_per_capita), color = "Kabul"), size = 0.8)+geom_density(data = parwan , aes(log(vio_per_capita), color = "Parwan"), size = 0.8)+ggtitle("Per Capita violence")+xlab(" Log Per Capita Monthly Violence")+ ylab ("Density")
 
 g2 = ggplot () +geom_density(data = sig, aes(log(acts) ), alpha = 0.6) + geom_density(data = kabul , aes(log(acts), color = "Kabul"), size = 0.8)+geom_density(data = parwan , aes(log(acts), color = "Parwan"), size = 0.8)+ggtitle("Raw Violence")+xlab(" Log Per Capita Monthly Violence")+ ylab ("Density")
 
-plot_grid(g2, g1)
+plot_grid(g2, g1,ncol = 1, align = 'v')
 ```
 
 
@@ -331,6 +359,9 @@ A brief overview of the steps taken for the analysis below :
 
  ![test](C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\sample_loc.png)
  
+ In the figure below nightlights below the level of 0.01 nanoWatts/cm2/sr are excluded. In the second image all values below the value of 0.25 are excluded.
+ 
+ In the analysis below the surveyed districts namely - 101,105, 301,302,303,308,310 are excluded. 
 ```{r}
 #loading files of our sample population 
 
@@ -341,21 +372,26 @@ a = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\ESOC\\Afghanistan\\OA
 sample.1 = sample[!(sample$PROV_34_NA =="Kapisa"), ]
 #ggplot(sample.1, aes(log(grid_code), fill = PROV_34_NA )) + geom_density(alpha = .5)
 
-loc = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\lat_long_sample.csv")
+# loc = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\lat_long_sample.csv")
 
 # colnames(a) = c("X", "DISTID", "longitude", "latitude", "avg_rad")
 # 
 # sample[ (sample$longitude == 69.11376) & (sample$latitude == 34.45709) , ]
 # 
- a = a[!a$avg_rad < 0,]
+ a = a[!a$avg_rad < 0.05,]
+  a = a[!(a$GEOID == 101|a$GEOID == 105|a$GEOID == 110),]
+   a = a[!(a$GEOID == 301|a$GEOID ==308|a$GEOID == 310|a$GEOID ==302|a$GEOID == 303),]
+ a1 = a[!a$avg_rad < 0.15,]
 # 
 # ggplot(sample.1, aes(log(grid_code), fill = PROV_34_NA )) + geom_density(alpha = .5) + geom_density(data = a , aes(avg_rad))
 #   
 #   geom_density(data = a, aes(log(avg_rad), alpha = .5))
 
-g1 = ggplot () +geom_density(data = sample.1 , aes(log(grid_code), fill = PROV_34_NA ), alpha = 0.6) + geom_density(data = a , aes(log(avg_rad)), size = 0.8)+ggtitle("Economic activity in sampled location vs the country")+xlab(" Log of Nightlights")+ ylab ("Density")
+g1 = ggplot () +geom_density(data = sample.1 , aes(log(grid_code), fill = PROV_34_NA ), alpha = 0.6) + geom_density(data = a , aes(log(avg_rad)), size = 0.8)+ggtitle("Economic activity in sampled location vs the country(Excluding val<0.05)")+xlab(" Log of Nightlights")+ ylab ("Density")
 
 g1
+
+ggplot () +geom_density(data = sample.1 , aes(log(grid_code), fill = PROV_34_NA ), alpha = 0.6) + geom_density(data = a1 , aes(log(avg_rad)), size = 0.8)+ggtitle("Economic activity in sampled location vs the country (Excluding val<0.25)")+xlab(" Log of Nightlights ")+ ylab ("Density")
 ```
   
   
@@ -399,14 +435,14 @@ sample = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicat
 a = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Prelim_robustness\\\\Pop_density_full_AF.csv")
 
 sample.1 = sample[!(sample$PROV_34_NA =="Kapisa"), ]
-a = a[!(a$grid_code == 0), ]
+a = a[!(a$grid_code < 0.0), ]
 #ggplot(sample.1, aes(log(grid_code), fill = PROV_34_NA )) + geom_density(alpha = .5)
 
 
 
 library(ggplot2)
 
-g1 = ggplot () +geom_density(data = sample.1 , aes(log(grid_code), fill = PROV_34_NA ), alpha = 0.6) + geom_density(data = a , aes(log(grid_code)), size = 0.8)+ggtitle("Log of population density in sampled location vs the country")+xlab(" Log of Population Density")+ ylab ("Density")
+g1 = ggplot () +geom_density(data = sample.1 , aes(log(grid_code), fill = PROV_34_NA ), alpha = 0.6) + geom_density(data = a , aes(log(grid_code)), size = 0.8, adjust = 5)+ggtitle("Log of population density in sampled location vs the country")+xlab(" Log of Population Density")+ ylab ("Density")
 
 g1
 
@@ -431,7 +467,7 @@ kabul = sample[(sample$PROV_34_NA =="Kabul"), ]
  parwan = sample[(sample$PROV_34_NA =="Parwan"), ]
  g2 = ggplot()+geom_density(data = parwan, aes(log(grid_code)), alpha = 0.6) +ggtitle("Population Density in Parwa")+xlab(" Log of Population Density")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
 
-g3 = ggplot()+geom_density(data = a, aes(log(grid_code)), alpha = 0.6) +ggtitle("Population Density in the country ")+xlab(" Log of Population Density")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
+g3 = ggplot()+geom_density(data = a, aes(log(grid_code)), alpha = 0.6, adjust = 5) +ggtitle("Population Density in the country ")+xlab(" Log of Population Density")+ ylab ("Density")+scale_fill_brewer(palette = "Set1")
  
 plot_grid(g1, g2, g3)
 
@@ -460,7 +496,7 @@ el$present_el = ifelse(el$gen_id %in% bl$gen_id, 1, 0)
 
 ####Gender based attrition
 
-There seems to be a little bit of a drop in the female and male population by the end of the surveys. But this drop does not seem to be statistically significant.  
+There seems to be a little bit of a drop in the female and male population by the end of the surveys. But this drop does not seem to be statistically significant. This figure only traces those respondents who started out in the baseline and were retained till the endline. The substitutes have not been included in the analysis. 
 ```{r}
 
 a = as.data.frame(table(bl$Q1_05_))
@@ -508,11 +544,11 @@ g2
 
 ```
 
-####Job Sector wise attrition 
+##Job Sector wise attrition 
 As expected there is a little attrition in most of the job sectors. this difference is not statistically significant. It is interesting to note almost no attrition in the agricultural sector.In the two plots below we explore:
 
 1. Comparing the entire population that was starting out in baseline to the population in endline.
-2. Comparing groupwise attrition.
+2. Comparing group wise attrition.
 ```{r}
 
 ####Comparing the entire population that was starting out in baseline
@@ -525,7 +561,9 @@ colnames(b)[2] = "End_line"
 test = merge(a,b, by = "Var1")
 melt =  melt(test, id = c("Var1"))
 ```
+### The individuals who started out in baseline and continued through the endline. 
 
+They could have switched out professions in this duration.
 ```{r}
 
 ggplot(melt, aes(x = Var1, y = value, fill = variable)) + geom_bar( stat = "identity", position = "dodge") +scale_fill_brewer(palette = "Set1")+labs(x=NULL, y=NULL)+ theme(legend.text=element_text(size=10))+theme(axis.text.x = element_text(angle = 90, hjust = 1))
@@ -534,7 +572,9 @@ ggplot(melt, aes(x = Var1, y = value, fill = variable)) + geom_bar( stat = "iden
  t.test(test$Base_line, test$End_line, paired=FALSE, var.equal = FALSE,alternative = c("two.sided") )
 
 ```
+The graph below shows group wise, those who started out in a particular profession at baseline  and were retained till the endline. The replacements have not been included in the figure below. For eg. 184 respondents reported to be engaging in agriculture at Baseline. Towards the endline only 46 of these individuals are still engaging in agriculture. The first figure shows 197 respondents who self report agriculture as profession. It is important to note here that these respondents could have shifted into agriculture from any of the other professions such as retail trade, security or construction.
 
+Although there is a rise in the number of respondents who report "agriculture" in endline only 46 of these had started out in agriculture. 
 ```{r}
 
 df1 <- bl[,c("gen_id","Q1_08_")]
@@ -542,11 +582,31 @@ df1 <- bl[,c("gen_id","Q1_08_")]
 df2 <- temp[,c("gen_id","Q1_08_")]
 #df2$type = "Endline"
 df =  merge(df1, df2, by = "gen_id")
+df$same = ifelse(df$Q1_08_.x ==df$Q1_08_.y, 1,0)
+test = df[!(df$same == 0),]
+test = test[!test$Q1_08_.x == "",]
 
-melt =  melt(df, id = c("gen_id"))
+a = as.data.frame(tapply( bl$gen_id,bl$Q1_08_, length))
+a$industry = rownames(a)
+colnames(a)  = c("count", "Industry")
+a = a[-1,]
 
-melt = melt[!melt$value == "",]
-ggplot(melt, aes(x = value, fill = variable)) + geom_bar(position = "dodge") +scale_fill_brewer(palette = "Set1")+labs(x=NULL, y=NULL)+ theme(legend.text=element_text(size=10))+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+b = as.data.frame(table(test$Q1_08_.x))
+b = b[-1,]
+colnames(b)  = c("Industry", "count")
+
+df = merge (a, b , by = "Industry")
+colnames(df) = c("Industry", "Baseline", "Endline")
+#########testing 
+
+
+##############################
+
+melt =  melt(df, id = c("Industry"))
+
+#melt = melt[!melt$value == "",]
+ggplot(melt, aes(x = Industry,, y = value ,fill = variable)) + geom_bar(stat = "identity", position = "dodge") +scale_fill_brewer(palette = "Set1")+labs(x=NULL, y=NULL)+ theme(legend.text=element_text(size=10))+theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 
 ```
@@ -558,7 +618,10 @@ ggplot(melt, aes(x = value, fill = variable)) + geom_bar(position = "dodge") +sc
 
 
 ####Employment Status wise attrition
- There is attrition in most employment types as expected. But these differences are not found to be statistically significant. There is no attrition virtually in individuals that are self- employed or unpaid- family workers. Again it is not unexpected that salaried workers have the highest probabilty of quitting the study. 
+ There is attrition in most employment types as expected. But these differences are not found to be statistically significant. There is no attrition virtually in individuals that are self- employed or unpaid- family workers. Again it is not unexpected that salaried workers have the highest probability of quitting the study. 
+ 
+ 
+ In an analysis similar to the one above we trace only those who are present in the baseline and endline, thus excluding the replacements. The image below does NOT give differential attrition but a grouping of the different employments statuses at baseline and endline of the respondents who were retained.
 ```{r}
 a = as.data.frame(table(  bl$Q1_09_))
 a = a[-1,]
@@ -577,6 +640,68 @@ t.test(test$Base_line, test$End_line, paired=FALSE, var.equal = FALSE,alternativ
 
 ```
 
+
+To understand differential attrition like above we trace those who were present in baseline and endline like we did above- 
+
+For example - the first figure shows that in the baseline we had about 288 day laborers which dropped to about 213 in endline. (not including the replacements). The sec figure shows the attrition of the original 288 respondents who quoted that they are daily laborers. We observe that only 62 of the 288  original respondents who said they are daily laborers are present in endline. Broad group wise trends can be seen from the first picture. Specific group wise attrition is discernible from the sec figure.  
+```{r}
+
+
+df1 <- bl[,c("gen_id","Q1_09_")]
+
+df2 <- temp[,c("gen_id","Q1_09_")]
+
+levels(df2$Q1_09_)[levels(df2$Q1_09_)=="Stays at home, cares for home and/or children"] <- "Stays at home"
+
+
+df =  merge(df1, df2, by = "gen_id")
+df$same = ifelse(df$Q1_09_.x == df$Q1_09_.y, 1,0)
+test = df[!(df$same == 0),]
+test = test[!test$Q1_09_.x == "",]
+
+a = as.data.frame(tapply( bl$gen_id,bl$Q1_09_, length))
+a$industry = rownames(a)
+colnames(a)  = c("count", "Industry")
+a = a[-1,]
+
+
+b = as.data.frame(table(test$Q1_09_.x))
+b = b[-1,]
+colnames(b)  = c("Industry", "count")
+
+df = merge (a, b , by = "Industry")
+colnames(df) = c("Industry", "Baseline", "Endline")
+#########testing 
+
+
+##############################
+
+melt =  melt(df, id = c("Industry"))
+
+#melt = melt[!melt$value == "",]
+ggplot(melt, aes(x = Industry,, y = value ,fill = variable)) + geom_bar(stat = "identity", position = "dodge") +scale_fill_brewer(palette = "Set1")+labs(x=NULL, y=NULL)+ theme(legend.text=element_text(size=10))+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 ####Income level wise attrition 
 
 As expected in the higher income brackets we observe a lot more attrition. but again these differences are not statistically significant. 
@@ -590,10 +715,13 @@ b = as.data.frame(table(el$Q1_10_))
 b = b[-(1:3),]
 colnames(b)[2] = "End_line"
 test = merge(a,b, by = "Var1")
+test$Var1 = as.numeric( as.character    (test$Var1))
+test <- test[order(test$Var1),]
+head(test)
 melt =  melt(test, id = c("Var1"))
 
 
-g5 = ggplot(melt, aes(x = Var1, y = value,  group=2)) + geom_point(aes(colour= variable ))+geom_line( aes(x = Var1, y = value,  group=variable, color = variable), size = 1.5) +scale_fill_brewer(palette = "Set1")+labs(x=NULL, y=NULL)+ theme(legend.text=element_text(size=10))+theme(axis.text.x = element_text(, size = 8,angle = 90, hjust = 1))
+g5 = ggplot(melt, aes(x = Var1, y = value,  group=2)) + geom_point(aes(colour= variable ))+geom_line( aes(x = Var1, y = value,  group=variable, color = variable), size = 1.2) +scale_fill_brewer(palette = "Set1")+labs(x=NULL, y=NULL)+ theme(legend.text=element_text(size=10))+theme(axis.text.x = element_text(, size = 8,angle = 90, hjust = 1))
 
 g5
 
@@ -601,7 +729,7 @@ t.test(test$Base_line, test$End_line, paired=FALSE, var.equal = FALSE,alternativ
 
 
 ```
-
+Note to jake- If the begninng part of the graph looks too mushed up (0-10000) I can redo the groupings to make it look nicer. 
 
 ##Selection into sample
 
