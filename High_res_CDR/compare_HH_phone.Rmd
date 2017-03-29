@@ -1,0 +1,55 @@
+---
+title: "Compare_HH_phones"
+author: "Manu"
+date: "March 29, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+library("foreign")
+library(data.table)
+library(RColorBrewer)
+
+dat <- read.dta13((file))
+label = attr(dat, "var.labels")
+
+colnames(dat) = label
+
+phone = read.csv(file)
+
+v = cbind(dat$`Number of mobile phones owned`, dat$`Value of all quality carpets`, dat$`Value of all blankets`, dat$`Debt value`, dat$`Value of all kitchen utensils`, dat$`Males using internet in last 12 months`, dat$`Females using internet in last 12 months`)
+
+colnames(v) = c("No_mobile_owned", "Value_quality_carpets", "Value_blankets", "Debt_value", "Value_kitche_utensils","Males_using_internet", "Females_using_internet")
+
+v = as.data.frame(v)
+
+v = data.table(v)
+rownames(v) = v$No_mobile_owned
+
+summary = v[, lapply(.SD, function(x){sum(x, na.rm = TRUE)/.N}), by = No_mobile_owned]
+
+#setorder(summary, No_mobile_owned)
+summary = summary[-1,]
+summary$size = table(v$No_mobile_owned)
+summary
+summary = as.data.frame(summary)
+row.names(summary) = summary$No_mobile_owned
+summary = summary[,-c(1,8)]
+summary = summary[-(12:14),]
+summary = data.matrix(summary)
+
+
+heatmap(summary, Rowv=NA, Colv=NA, col =brewer.pal(50,"Greens"), scale="column", margins=c(15,10))
+
+tapply( v$Value_quality_carpets, v$No_mobile_owned,sum, na.rm = TRUE)
+
+
+  aggregate(v$No_mobile_owned, by=list(v$Value_quality_carpets,v$Value_blankets), 
+  FUN=sum, na.rm=TRUE)
+```
