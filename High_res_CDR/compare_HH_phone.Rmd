@@ -141,9 +141,9 @@ melt= melt(temp, id = c("hhid","phone"))
 melt = melt[,-1]
 melt$phone = as.factor(melt$phone)
 melt$value = as.factor(melt$value)
-aggregate(melt, by= phone, FUN = sum, na.rm = TRUE)
+a = tapply(melt,melt$phone,length)
 
-ggplot(melt, aes((variable))) +
+ggplot(melt, aes((variable , value))) +
   geom_bar(aes(fill = phone))
 ```
 
