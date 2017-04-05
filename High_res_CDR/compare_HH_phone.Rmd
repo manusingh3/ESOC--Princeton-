@@ -6,50 +6,177 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+opts_chunk$set(echo=FALSE,
+               cache=FALSE, autodep=TRUE, cache.comments=FALSE,
+               message=FALSE, warning=FALSE, error=FALSE)
 ```
 
-## R Markdown
+## Comapre Households with and without phones
 
 ```{r}
-library("foreign")
+library(foreign)
 library(data.table)
 library(RColorBrewer)
 
-dat <- read.dta13((file))
+dat <- read.dta(("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\NRVA 2011-12\\Data 2011-12\\Data 2011-12\\M_07c.dta"))
 label = attr(dat, "var.labels")
 
 colnames(dat) = label
 
-phone = read.csv(file)
+# phone = read.csv(file)
 
 v = cbind(dat$`Number of mobile phones owned`, dat$`Value of all quality carpets`, dat$`Value of all blankets`, dat$`Debt value`, dat$`Value of all kitchen utensils`, dat$`Males using internet in last 12 months`, dat$`Females using internet in last 12 months`)
 
-colnames(v) = c("No_mobile_owned", "Value_quality_carpets", "Value_blankets", "Debt_value", "Value_kitche_utensils","Males_using_internet", "Females_using_internet")
-
-v = as.data.frame(v)
-
-v = data.table(v)
-rownames(v) = v$No_mobile_owned
-
-summary = v[, lapply(.SD, function(x){sum(x, na.rm = TRUE)/.N}), by = No_mobile_owned]
-
-#setorder(summary, No_mobile_owned)
-summary = summary[-1,]
-summary$size = table(v$No_mobile_owned)
-summary
-summary = as.data.frame(summary)
-row.names(summary) = summary$No_mobile_owned
-summary = summary[,-c(1,8)]
-summary = summary[-(12:14),]
-summary = data.matrix(summary)
-
-
-heatmap(summary, Rowv=NA, Colv=NA, col =brewer.pal(50,"Greens"), scale="column", margins=c(15,10))
-
-tapply( v$Value_quality_carpets, v$No_mobile_owned,sum, na.rm = TRUE)
-
-
-  aggregate(v$No_mobile_owned, by=list(v$Value_quality_carpets,v$Value_blankets), 
-  FUN=sum, na.rm=TRUE)
+# colnames(v) = c("No_mobile_owned", "Value_quality_carpets", "Value_blankets", "Debt_value", "Value_kitche_utensils","Males_using_internet", "Females_using_internet")
+# 
+# v = as.data.frame(v)
+# 
+# v = data.table(v)
+# rownames(v) = v$No_mobile_owned
+# 
+# summary = v[, lapply(.SD, function(x){sum(x, na.rm = TRUE)/.N}), by = No_mobile_owned]
+# 
+# #setorder(summary, No_mobile_owned)
+# summary = summary[-1,]
+# summary$size = table(v$No_mobile_owned)
+# summary
+# summary = as.data.frame(summary)
+# row.names(summary) = summary$No_mobile_owned
+# summary = summary[,-c(1,8)]
+# summary = summary[-(12:14),]
+# summary = data.matrix(summary)
+# 
+# 
+# heatmap(summary, Rowv=NA, Colv=NA, col =brewer.pal(50,"Greens"), scale="column", margins=c(15,10))
+# 
+# tapply( v$Value_quality_carpets, v$No_mobile_owned,sum, na.rm = TRUE)
+# 
+# 
+#   aggregate(v$No_mobile_owned, by=list(v$Value_quality_carpets,v$Value_blankets), 
+#   FUN=sum, na.rm=TRUE)
+  
 ```
+
+#creating larger collated dataset
+```{r}
+
+file1 = "C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\NRVA 2011-12\\Data 2011-12\\Data 2011-12\\Poverty.csv"
+file2 = "C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\NRVA 2011-12\\Data 2011-12\\Data 2011-12\\food.csv"
+file3 = "C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\NRVA 2011-12\\Data 2011-12\\Data 2011-12\\income.csv"
+file4 = "C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\NRVA 2011-12\\Data 2011-12\\Data 2011-12\\ItemA.csv"
+
+poverty <- read.csv((file1))
+food = read.csv(file2)
+income = read.csv(file3)
+item = read.csv(file4)
+
+total = merge(poverty, food, by = "hhid", all = TRUE)
+total = merge(total, income, by = "hhid", all = TRUE)
+total = merge(total, item, by = "hhid", all = TRUE)
+
+colnames(total) = c("hhid", "poor", "food_skip", "total_income", "items_owned")
+
+mobile = dat[,c(1,2,4,7,9,11,12)]
+
+mobile$value_hh_items = rowSums(mobile[,4:7], na.rm = TRUE)
+
+mobile = mobile[,-(4:7)]
+
+mobile$phone = ifelse(mobile$`Number of mobile phones owned` ==0,0,1)
+mobile = mobile[,-(3)]
+colnames(mobile)[1:2]= c("hhid","weight")
+total = merge(mobile, total, by = "hhid", all = TRUE)
+
+#head(mobile)
+
+total$food_skipped = ifelse(total$food_skip == "Reduced food amount / meals", 1, 0)
+total= total[,-6]
+head(total)
+```
+
+##Comparison metrics
+
+The comparison is performed for the following metrics 
+
+1. Food/meal skipped by the household.
+
+2. Poverty - a binary constructed variable of the NRVA dataset.
+
+3. Total Income
+
+4. Value of - Kitchen utensils/blankets/carpets owned
+
+5. No of items owned A (Refrigerator, stove, iron, sewing machine, radio).
+
+
+The phone ownership is a binary variable ( no of phones owned by the households are not considered in this analysis.)
+
+```{r}
+library(corrplot)
+M <- cor(total[,3:8], use="complete.obs")
+corrplot(M, method="pie")
+
+```
+
+Just a quick check of correlations  between the variables shows that the correlations are in the directions as expected. 
+
+### 1. Food/ meals skipped by household and poverty
+
+```{r}
+library(ggplot2)
+library(survey)
+phone = na.omit(total[total$phone == 1,])
+nophone = na.omit(total[total$phone == 0,])
+
+survey<-svydesign(id=~1, weights=~weight, data=total)
+phone<-svydesign(id=~1, weights=~weight, data=phone)
+nophone<-svydesign(id=~1, weights=~weight, data=nophone)
+
+#ggplot() + geom_bar(total, aes(poor))
+
+head(total)
+temp = total[,c(1,4,5,8)]
+melt= melt(temp, id = c("hhid","phone")) 
+melt = melt[,-1]
+melt$phone = as.factor(melt$phone)
+melt$value = as.factor(melt$value)
+aggregate(melt, by= phone, FUN = sum, na.rm = TRUE)
+
+ggplot(melt, aes((variable))) +
+  geom_bar(aes(fill = phone))
+```
+
+###  Total Household Income
+
+```{r}
+
+ggplot(na.omit(total), aes(factor(phone), log(total_income))) + geom_boxplot()+coord_flip()
+
+svymean(~total_income, phone, na.rm= TRUE)
+svymean(~total_income, nophone, na.rm= TRUE)
+#svyttest(~total_income~, design, ...)
+
+#t.test(phone$total_income,nophone$total_income, var.equal=FALSE, paired=FALSE)
+```
+
+
+###  Total vakue of Kitchen utensits, blankets, carpets owned.
+
+```{r}
+
+ggplot(na.omit(total), aes(factor(phone), log(value_hh_items))) + geom_boxplot()+coord_flip()
+
+#t.test(phone$value_hh_items,nophone$value_hh_items, var.equal=FALSE, paired=FALSE)
+```
+
+
+###  Number of items owned(Refrigerator, stove, iron, sewing machine, radio)
+
+```{r}
+
+ggplot(na.omit(total), aes(factor(phone), (items_owned))) + geom_boxplot()+coord_flip()
+
+#t.test(phone$items_owned,nophone$items_owned, var.equal=FALSE, paired=FALSE)
+```
+
