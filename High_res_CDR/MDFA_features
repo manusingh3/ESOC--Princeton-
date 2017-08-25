@@ -1,0 +1,399 @@
+---
+title: "MDFA figures"
+author: "Manu"
+date: "August 9, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, cache = TRUE, warning = FALSE, message = FALSE)
+```
+For all the figures below I have picked up a CDR feature to replicate, as an example I have taken -
+number_of_interactions__weekday_
+
+```{r}
+file = "C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Sayara\\alldata_clean\\highRez_allrounds_long_clean_with_CDR-2wk.csv"
+
+d = read.csv(file)
+
+a = "number_of_interactions__weekday_"
+
+```
+
+## Histogram and Density plot
+
+```{r}
+library(ggplot2)
+
+total = d[d$wave == 0 |d$wave == 13, names(d) %in% c(a, "wave", "respid")]
+
+total$wave = as.factor(total$wave)
+
+#ggplot(total, aes(x = number_of_interactions__weekday_)) + geom_histogram(aes(y = ..density.., color = "wave")) + geom_density(aes(color = wave))
+
+ggplot(total, aes(x = log(number_of_interactions__weekday_))) + geom_histogram(aes(y = ..density..)) + geom_density(aes(fill = wave), alpha = 0.5)+ggtitle("Number of Interactions on weekday")
+
+ggplot(total, aes(x = log(number_of_interactions__weekday_))) + geom_density(aes(col = wave),size = 1.3, alpha = 0.5)+ggtitle("Number of Interactions on Weekday")
+```
+
+
+## Distribution over time
+
+Boxplots with date on x axis
+
+```{r}
+
+total = d[, names(d) %in% c(a, "wave", "respid", "province")]
+
+
+  ggplot(total, aes(x=as.factor(wave), y=(number_of_interactions__weekday_))) +
+  geom_boxplot(aes(fill=as.factor(province))) +
+    scale_x_discrete(drop = FALSE) +
+  scale_y_continuous(breaks = seq(-500, 600, by = 100), limits = c(1,600)) +
+  xlab("Survey Wave") + ylab("number_of_interactions__weekday \n Linear Scale") + 
+  ggtitle("Number of interactions weekday ") +
+  guides(fill=guide_legend(title="Province"))
+  
+  
+    ggplot(total, aes(x=as.factor(wave), y=log(number_of_interactions__weekday_))) +
+  geom_boxplot(aes(fill=as.factor(province))) +
+    scale_x_discrete(drop = FALSE) +
+  scale_y_continuous(breaks = seq(0, 10, by = 1), limits = c(0,10)) +
+  xlab("Survey Wave") + ylab("number_of_interactions__weekday_ \n Log Scale") + 
+  ggtitle("Number of interactions weekday ") +
+  guides(fill=guide_legend(title="Province"))
+
+```
+
+
+## Between vs. Within variation
+
+```{r}
+total = d[, names(d) %in% c(a, "wave", "respid", "province")]
+
+mean = mean(total[,2], na.rm = TRUE)
+cv = sd(total[,2], na.rm = TRUE)/mean
+bet =  sd(total$number_of_interactions__weekday_, na.rm = TRUE)
+
+wit = mean(tapply(total[,2], total[,1], sd, na.rm = TRUE), na.rm = TRUE )  
+wb = wit/bet
+
+b = cbind(mean,cv,wit,bet,wb); colnames(b) = c("Mean", "CV", "Between", "Within", "W-B Ratio")
+b
+```
+
+
+## Time series - one for each person
+
+```{r}
+
+total = d[, names(d) %in% c(a, "wave", "respid", "cashTreatment")]
+total = total[!(total$cashTreatment ==""), ]
+total$wave = as.factor(total$wave)
+total = na.omit(total)
+
+library(dplyr)
+#####warning! - insert actual variable name instead of placeholder 
+gd <- total %>% group_by(wave,cashTreatment) %>% summarise_all(funs( mean(number_of_interactions__weekday_, na.rm = TRUE)))
+
+med <- total %>% group_by(wave,cashTreatment) %>% summarise_all(funs( median(number_of_interactions__weekday_, na.rm = TRUE)))
+
+
+  
+ ggplot(total, aes(wave, log(number_of_interactions__weekday_), 
+                  group = respid)) +
+  geom_line(alpha = .01) +
+  geom_line(data = gd, aes(wave, log(number_of_interactions__weekday_), 
+                  group = cashTreatment, color = cashTreatment), alpha = .8, size = 1) +
+  theme_bw() +
+  scale_y_continuous(breaks = seq(0, 5, by = 1)) +
+  labs(
+    title = "Number_of_interactions__weekday without median lines",
+    x = "Survey Wave",
+    y = "Number_of_interactions__weekday \n Log Scale)",
+    color = NULL
+  )
+ 
+  ggplot(total, aes(wave, log(number_of_interactions__weekday_), 
+                  group = respid)) +
+  geom_line(alpha = .01) +
+  geom_line(data = gd, aes(wave, log(number_of_interactions__weekday_), 
+                  group = cashTreatment, color = cashTreatment), alpha = .8, size = 1) +
+   geom_line(data = med, aes(wave, log(number_of_interactions__weekday_), 
+                  group = cashTreatment, color = cashTreatment), alpha = .8, size = 1, linetype = "dashed") +
+  theme_bw() +
+  scale_y_continuous(breaks = seq(0, 5, by = 1)) +
+  labs(
+    title = "Number_of_interactions__weekday ",
+    x = "Survey Wave",
+    y = "Number_of_interactions__weekday \n Log Scale)",
+    color = NULL
+  )
+ 
+ 
+ 
+ 
+ 
+
+
+```
+
+
+```{r}
+
+# 
+# total = d[, names(d) %in% c("callcontacts_win", "wave", "respid", "cashTreatment")]
+# total = total[!(total$cashTreatment ==""), ]
+# total$wave = as.factor(total$wave)
+# total = na.omit(total)
+# 
+# library(dplyr)
+# #####warning! - insert actual variable name instead of placeholder 
+# gd <- total %>% 
+#         group_by(cashTreatment, wave) %>% 
+#         # summarise(CookFuel = mean(Q4_07, na.rm = TRUE)) %>%
+#         summarise(callcontacts_win = mean(callcontacts_win, na.rm = TRUE))
+# 
+# med <- total %>% 
+#         group_by(cashTreatment, wave) %>% 
+#         # summarise(CookFuel = mean(Q4_07, na.rm = TRUE)) %>%
+#         summarise(callcontacts_win = median(callcontacts_win, na.rm = TRUE))
+# 
+# 
+#   
+#  ggplot(total, aes(wave, log(callcontacts_win), 
+#                   group = respid)) +
+#   geom_line(alpha = .01) +
+#   geom_line(data = gd, aes(wave, log(callcontacts_win), 
+#                   group = cashTreatment, color = cashTreatment), alpha = .8, size = 1) +
+#    geom_line(data = med, aes(wave, log(callcontacts_win), 
+#                   group = cashTreatment, color = cashTreatment), alpha = .8, size = 1, linetype = "dashed") +
+#   theme_bw() +
+#   scale_y_continuous(breaks = seq(0, 5, by = 1)) +
+#   labs(
+#     title = "callcontacts_win ",
+#     x = "Survey Wave",
+#     y = "callcontacts_win \n Log Scale)",
+#     color = NULL
+#   )
+#  
+
+```
+
+
+## Correlation across waves in feature
+
+
+```{r}
+library(reshape2)
+total = d[, names(d) %in% c(a, "wave", "respid")]
+#total = total[,-1 ]
+w0 = total[total$wave ==0 , 1:2]
+w1 = total[total$wave ==1 , 1:2]; temp = merge(w0, w1, by = "respid", all = TRUE); colnames(temp) = c("respid",0,1)
+w2 = total[total$wave ==2 , 1:2]; temp = merge(temp, w2, by = "respid", all = TRUE); colnames(temp)[4] = 2 
+w3 = total[total$wave ==3 , 1:2]; temp = merge(temp, w3, by = "respid", all = TRUE); colnames(temp)[5] = 3
+w4 = total[total$wave ==4 ,1:2 ]; temp = merge(temp, w4, by = "respid", all = TRUE); colnames(temp)[6] = 4
+w5 = total[total$wave ==5 ,1:2]; temp = merge(temp, w5, by = "respid", all = TRUE); colnames(temp)[7] = 5
+w6 = total[total$wave ==6 ,1:2 ]; temp = merge(temp, w6, by = "respid", all = TRUE); colnames(temp)[8] = 6
+w7 = total[total$wave ==7 ,1:2 ]; temp = merge(temp, w7, by = "respid", all = TRUE); colnames(temp)[9] = 7
+w8 = total[total$wave ==8 ,1:2 ]; temp = merge(temp, w8, by = "respid", all = TRUE); colnames(temp)[10] = 8
+w9 = total[total$wave ==9 ,1:2 ]; temp = merge(temp, w9, by = "respid", all = TRUE); colnames(temp)[11] = 9
+w10 = total[total$wave ==10,1:2 ]; temp = merge(temp, w10, by = "respid", all = TRUE); colnames(temp)[12] = 10
+w11 = total[total$wave ==11 ,1:2 ]; temp = merge(temp, w11, by = "respid", all = TRUE); colnames(temp)[13] = 11
+w12 = total[total$wave ==12 ,1:2 ]; temp = merge(temp, w12, by = "respid", all = TRUE); colnames(temp)[14] = 12
+w13 = total[total$wave ==13 ,1:2 ]; temp = merge(temp, w13, by = "respid", all = TRUE); colnames(temp)[15] = 13
+
+temp = temp[,-1]
+# rcb <- function (...) {
+# # rcb <--> ``ragged cbind''
+# xxx <- list(...)
+# n <- max(unlist(lapply(xxx,function(x){ifelse(is.matrix(x),nrow(x),
+# length(x))})))
+# yyy <- lapply(xxx,function(x,n){if(is.matrix(x))
+# rbind(x,matrix(NA,ncol=ncol(x),nrow=n))
+# else c(x,rep(NA,n-length(x)))},n=n)
+# do.call("cbind",yyy)
+# }
+
+library(corrplot)
+# temp =as.data.frame( rcb(w0,w1,w2,w3,w4,w5,w6,w7,w8,w9,w10,w11,w12,w13))
+colnames(temp) <- paste("WAVE", seq(0,13,1), sep = "_")
+temp = (cor(temp, use = "complete.obs"))
+
+corrplot(temp, method="color", cl.lim = c(0,1))
+# temp = melt(temp)
+# library(ggplot2)
+# ggplot(data = melt(temp), aes(x=X1, y=X2, fill=value)) +
+#   geom_tile()+scale_fill_gradient2(limits=c(-0, 1))+theme(axis.text.x  = element_text(angle=90)) +xlab("") + ylab("")
+# 
+# 
+# qplot(x=X1, y=X2, data=temp, fill=value, geom="tile") +
+#   scale_fill_gradient2(limits=c(-1, 1)) +
+# 
+#   xlab("") + ylab("") +
+#   theme(axis.text.x  = element_text(angle=90)) +
+#   ggtitle(paste("Expenditure Correlations, survey round", 0))
+
+
+
+```
+
+
+## Violin plot
+
+```{r}
+
+total = d[, names(d) %in% c(a, "wave", "respid", "province")]
+total$wave = as.factor(total$wave)
+total = na.omit(total)
+
+GeomSplitViolin <- ggproto("GeomSplitViolin", GeomViolin, draw_group = function(self, data, ..., draw_quantiles = NULL){
+  data <- transform(data, xminv = x - violinwidth * (x - xmin), xmaxv = x + violinwidth * (xmax - x))
+  grp <- data[1,'group']
+  newdata <- plyr::arrange(transform(data, x = if(grp%%2==1) xminv else xmaxv), if(grp%%2==1) y else -y)
+  newdata <- rbind(newdata[1, ], newdata, newdata[nrow(newdata), ], newdata[1, ])
+  newdata[c(1,nrow(newdata)-1,nrow(newdata)), 'x'] <- round(newdata[1, 'x']) 
+  if (length(draw_quantiles) > 0 & !scales::zero_range(range(data$y))) {
+    stopifnot(all(draw_quantiles >= 0), all(draw_quantiles <= 
+                                              1))
+    quantiles <- create_quantile_segment_frame(data, draw_quantiles)
+    aesthetics <- data[rep(1, nrow(quantiles)), setdiff(names(data), c("x", "y")), drop = FALSE]
+    aesthetics$alpha <- rep(1, nrow(quantiles))
+    both <- cbind(quantiles, aesthetics)
+    quantile_grob <- GeomPath$draw_panel(both, ...)
+    ggplot2:::ggname("geom_split_violin", grobTree(GeomPolygon$draw_panel(newdata, ...), quantile_grob))
+  }
+  else {
+    ggplot2:::ggname("geom_split_violin", GeomPolygon$draw_panel(newdata, ...))
+  }
+})
+
+geom_split_violin <- function (mapping = NULL, data = NULL, stat = "ydensity", position = "identity", ..., draw_quantiles = NULL, trim = FALSE, scale = "area", na.rm = FALSE, show.legend = NA, inherit.aes = TRUE) {
+  layer(data = data, mapping = mapping, stat = stat, geom = GeomSplitViolin, position = position, show.legend = show.legend, inherit.aes = inherit.aes, params = list(trim = trim, scale = scale, draw_quantiles = draw_quantiles, na.rm = na.rm, ...))
+}
+
+
+
+ggplot(total, aes(wave, log(number_of_interactions__weekday_), fill=province)) + geom_split_violin() +scale_fill_manual(values=c("red", "blue"))
+
+```
+
+## Coefplots
+
+```{r}
+total = d[, names(d) %in% c(a,  "small", "large", "anyshock", "Q2_19", "Q2_20","Q10_01_A","Q10_01_B","Q10_01_C", "Q10_01_D", "Q10_01_E", "Q10_01_F", "Q10_01_G", "Q10_01_H",  "Q10_01_I", "Q10_01_J", "Q10_01_K", "Q10_01_L", "Q10_01_M", "Q10_01_N", "Q10_01_O", "Q10_01_P", "Q10_01_Q", "Q10_01_R", "familydeath",  "Q10_01_S", "Q10_01_T", "Q10_01_U")]
+
+total$Q10_01_A = ifelse(total$Q10_01_A =="Yes", 1, 0)
+total$Q10_01_B = ifelse(total$Q10_01_B =="Yes", 1, 0)
+total$Q10_01_C = ifelse(total$Q10_01_C =="Yes", 1, 0)
+total$Q10_01_D = ifelse(total$Q10_01_D =="Yes", 1, 0)
+total$Q10_01_E = ifelse(total$Q10_01_E =="Yes", 1, 0)
+total$Q10_01_F = ifelse(total$Q10_01_F =="Yes", 1, 0)
+total$Q10_01_G = ifelse(total$Q10_01_G =="Yes", 1, 0)
+total$Q10_01_H = ifelse(total$Q10_01_H =="Yes", 1, 0)
+total$Q10_01_I = ifelse(total$Q10_01_I =="Yes", 1, 0)
+total$Q10_01_J = ifelse(total$Q10_01_J =="Yes", 1, 0)
+total$Q10_01_K = ifelse(total$Q10_01_K =="Yes", 1, 0)
+total$Q10_01_L = ifelse(total$Q10_01_L =="Yes", 1, 0)
+total$Q10_01_M = ifelse(total$Q10_01_M =="Yes", 1, 0)
+total$Q10_01_N = ifelse(total$Q10_01_N =="Yes", 1, 0)
+total$Q10_01_O = ifelse(total$Q10_01_O =="Yes", 1, 0)
+total$Q10_01_P = ifelse(total$Q10_01_P =="Yes", 1, 0)
+total$Q10_01_Q = ifelse(total$Q10_01_Q =="Yes", 1, 0)
+total$Q10_01_R = ifelse(total$Q10_01_R =="Yes", 1, 0)
+total$Q10_01_S = ifelse(total$Q10_01_S =="Yes", 1, 0)
+total$Q10_01_T = ifelse(total$Q10_01_T =="Yes", 1, 0)
+total$Q10_01_U = ifelse(total$Q10_01_U =="Yes", 1, 0)
+total$Q2_19 = ifelse(total$Q2_19 =="Yes", 1, 0)
+
+
+str(total)
+
+temp <- as.data.frame( scale(total))
+temp = cbind(d$respid, temp)
+colnames(temp)[1] = "respid"
+
+# library(plm)
+# library(lfe)
+library(coefplot)
+lm1 = lm(temp[,2] ~ small+factor(respid), data = temp  );a = buildModelCI(lm1); coef = a[nrow(a)-1, ]
+lm2 = lm(temp[,2] ~ large+factor(respid), data = temp  );a = buildModelCI(lm2); coef = rbind(coef, a[nrow(a)-1, ])
+lm3 = lm(temp[,2] ~ anyshock+factor(respid), data = temp  );a = buildModelCI(lm3); coef = rbind(coef, a[nrow(a)-1, ])
+lm4 = lm(temp[,2] ~ Q2_19+factor(respid), data = temp  );a = buildModelCI(lm4); coef = rbind(coef, a[nrow(a)-1, ])
+lm5 = lm(temp[,2] ~ Q2_20+factor(respid), data = temp  );a = buildModelCI(lm5); coef = rbind(coef, a[nrow(a)-1, ])
+lm6 = lm(temp[,2] ~ Q10_01_A +factor(respid), data = temp  );a = buildModelCI(lm6); coef = rbind(coef, a[nrow(a)-1, ])
+lm7 = lm(temp[,2] ~ Q10_01_B +factor(respid), data = temp  );a = buildModelCI(lm7); coef = rbind(coef, a[nrow(a)-1, ])
+lm8 = lm(temp[,2] ~ Q10_01_C +factor(respid), data = temp  );a = buildModelCI(lm8); coef = rbind(coef, a[nrow(a)-1, ])
+lm9 = lm(temp[,2] ~ Q10_01_D +factor(respid), data = temp  );a = buildModelCI(lm9); coef = rbind(coef, a[nrow(a)-1, ])
+lm10 = lm(temp[,2] ~ Q10_01_E +factor(respid), data = temp  );a = buildModelCI(lm10); coef = rbind(coef, a[nrow(a)-1, ])
+lm11 = lm(temp[,2] ~ Q10_01_F +factor(respid), data = temp  );a = buildModelCI(lm11); coef = rbind(coef, a[nrow(a)-1, ])
+lm12 = lm(temp[,2] ~ Q10_01_G +factor(respid), data = temp  );a = buildModelCI(lm12); coef = rbind(coef, a[nrow(a)-1, ])
+lm13 = lm(temp[,2] ~ Q10_01_H +factor(respid), data = temp  );a = buildModelCI(lm13); coef = rbind(coef, a[nrow(a)-1, ])
+lm14 = lm(temp[,2] ~ Q10_01_I +factor(respid), data = temp  );a = buildModelCI(lm14); coef = rbind(coef, a[nrow(a)-1, ])
+lm15 = lm(temp[,2] ~ Q10_01_J +factor(respid), data = temp  );a = buildModelCI(lm15); coef = rbind(coef, a[nrow(a)-1, ])
+lm16 = lm(temp[,2] ~ Q10_01_K +factor(respid), data = temp  );a = buildModelCI(lm16); coef = rbind(coef, a[nrow(a)-1, ])
+lm17 = lm(temp[,2] ~ Q10_01_L +factor(respid), data = temp  );a = buildModelCI(lm17); coef = rbind(coef, a[nrow(a)-1, ])
+lm18 = lm(temp[,2] ~ Q10_01_M +factor(respid), data = temp  );a = buildModelCI(lm18); coef = rbind(coef, a[nrow(a)-1, ])
+lm19 = lm(temp[,2] ~ Q10_01_N +factor(respid), data = temp  );a = buildModelCI(lm19); coef = rbind(coef, a[nrow(a)-1, ])
+lm20 = lm(temp[,2] ~ Q10_01_O +factor(respid), data = temp  );a = buildModelCI(lm20); coef = rbind(coef, a[nrow(a)-1, ])
+lm21 = lm(temp[,2] ~ Q10_01_P +factor(respid), data = temp  );a = buildModelCI(lm21); coef = rbind(coef, a[nrow(a)-1, ])
+lm22 = lm(temp[,2] ~ Q10_01_Q +factor(respid), data = temp  );a = buildModelCI(lm22); coef = rbind(coef, a[nrow(a)-1, ])
+lm23 = lm(temp[,2] ~ Q10_01_R +factor(respid), data = temp  );a = buildModelCI(lm23); coef = rbind(coef, a[nrow(a)-1, ])
+lm24 = lm(temp[,2] ~ familydeath +factor(respid), data = temp  );a = buildModelCI(lm24); coef = rbind(coef, a[nrow(a)-1, ])
+lm25 = lm(temp[,2] ~ Q10_01_S +factor(respid), data = temp  );a = buildModelCI(lm25); coef = rbind(coef, a[nrow(a)-1, ])
+lm26 = lm(temp[,2] ~ Q10_01_T +factor(respid), data = temp  );a = buildModelCI(lm26); coef = rbind(coef, a[nrow(a)-1, ])
+lm27 = lm(temp[,2] ~ Q10_01_U +factor(respid), data = temp  );a = buildModelCI(lm27); coef = rbind(coef, a[nrow(a)-1, ])
+
+# coef
+
+coef$Model = row.names(coef)
+ 
+       coef$Coefficient =  c(  
+       "Small cash drop" ,
+		    "Large cash drop" ,
+			  "Any shock in past 2 wks",
+	      "Electricity outage",
+			  "Days of electricity outage",
+			  "Received gift",
+			  "Received other income",
+		    "Party or celebration",
+			  "Out-Migration",
+			  "Internal Migration",
+			  "Lower crop yields",
+			  "Crop disease or pests",
+		    "Livestock died or stolen",
+			  "Loss of self-employment",
+		    "Loss of salaried employment",
+			  "End of regular assistance",
+		    "Large fall in sale price of crops",
+		    "Large rise in food prices",
+		    "Breakdown of hh asset",
+        "Illness or accident within hh",
+			  "Birth in hh",
+			  "Death in hh",
+		    "Death outside hh",
+			  "Any family member death",
+			  "End of marriage",
+			  "Theft of household belongings",
+			  "House damaged or destroyed")
+  
+coefplot(coef, color = "red", shape = 8, sort = c("normal"))
+
+coef$Coefficient = factor(coef$Coefficient, levels = rev(coef$Coefficient))
+
+ggplot(coef, aes(Coefficient, Value)) + 
+  geom_hline(yintercept=0, lty=2, lwd=1, colour="grey50") +
+    
+  geom_errorbar(aes(ymin=LowOuter, ymax=HighOuter), 
+                lwd=1.1, colour="darkorange2", width=0.25) +
+  
+  geom_errorbar(aes(ymin=LowInner, ymax=HighInner), 
+                lwd=1.5, colour="darkorange3", width=0) +
+
+  geom_point(size=3, pch=23, fill="darkorange4") +
+  theme_bw()+ coord_flip()+ggtitle( colnames(total)[1])
+
+
+         
+
+```
