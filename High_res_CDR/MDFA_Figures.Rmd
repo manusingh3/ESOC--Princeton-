@@ -1,0 +1,393 @@
+---
+title: "MDFA figures"
+author: "Manu"
+date: "August 9, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, cache = TRUE, warning = FALSE, message = FALSE)
+```
+This code takes in a bandicoot feature and produces a list if figures. As and when MDFA features are available these will be migrated over. 
+
+```{r}
+# file = "C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Sayara\\alldata_clean\\highRez_allrounds_long_clean_with_CDR-2wk.csv"
+# 
+# d = read.csv(file, na.strings=c("","NA"))
+# 
+# a = "number_of_contacts__allweek__day__call"
+
+d = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Bandicoot figures\\bandicoot_shock.csv")
+
+# cash = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Bandicoot figures\\cashTreatment.csv")
+# 
+# df = join(d, cash,
+#      type = "inner")
+# 
+# write.csv(df, file = "bandicoot_shock.csv" )
+
+#head(total)
+
+```
+
+
+
+
+## Histogram and Density plot
+
+```{r}
+library(ggplot2)
+
+total = d[d$wave == 0 |d$wave == 13, names(d) %in% c(a, "wave", "respid")]
+
+total$wave = as.factor(total$wave)
+
+
+ggplot(total, aes(x = log(total[,2]))) + geom_histogram(aes(y = ..density..)) + geom_density(aes(fill = wave), alpha = 0.5)+ggtitle(paste(a))+xlab(paste(a))
+
+
+```
+
+
+## Distribution over time
+
+Boxplots with date on x axis
+
+```{r}
+
+total = d[, names(d) %in% c(a, "wave", "respid", "province")]
+
+
+  # ggplot(total, aes(x=as.factor(wave), y=(total[,3]))) +
+  # geom_boxplot(aes(fill=as.factor(province))) +
+  #   scale_x_discrete(drop = FALSE) +
+  # scale_y_continuous(breaks = seq(-500, 600, by = 100), limits = c(1,600)) +
+  # xlab("Survey Wave") + ylab(paste( a, "\n" ,"Linear scale", sep = " ")) + 
+  # ggtitle(paste(a)) +
+  # guides(fill=guide_legend(title="Province"))
+  
+  
+    ggplot(total, aes(x=as.factor(wave), y=log(total[,2]))) +
+  geom_boxplot(aes(fill=as.factor(province))) +
+    scale_x_discrete(drop = FALSE) +
+  scale_y_continuous(breaks = seq(-7, 7, by = 1), limits = c(-7,7)) +
+  xlab("Survey Wave") + ylab(paste( a, "\n" ,"Log scale", sep = " ")) + 
+  ggtitle(paste(a)) +
+  guides(fill=guide_legend(title="Province"))
+
+```
+
+
+## Between vs. Within variation
+
+```{r}
+total = d[, names(d) %in% c(a, "wave", "respid", "province")]
+
+mean = mean(total[,2], na.rm = TRUE)
+cv = sd(total[,2], na.rm = TRUE)/mean
+bet = sd(tapply(total[,2], total[,1], mean, na.rm = TRUE), na.rm = TRUE )
+# bet =  mean(((tapply(total[,2], total[,1], mean, na.rm = TRUE)) -mean)^2 , na.rm = TRUE) - both are equal the above is more concise
+wit = mean(tapply(total[,2], total[,1], sd, na.rm = TRUE), na.rm = TRUE )
+wb = wit/bet
+
+b = cbind(mean,cv,wit,bet,wb); colnames(b) = c("Mean", "CV", "Between", "Within", "W-B Ratio")
+b
+```
+
+
+## Time series - one for each person
+
+```{r}
+
+total = d[, names(d) %in% c(a, "wave", "respid", "cashTreatment")]
+total = total[!(total$cashTreatment ==""), ]
+total$wave = as.factor(total$wave)
+total = na.omit(total)
+
+library(dplyr)
+
+
+#  getStats <- function(data,col) {
+#    ## if you want to pass a string argument instead, remove
+#    ## the next line
+#    #col <- deparse(substitute(col))
+#    funs <- c("n","mean","stats::median","sd","se")
+#    dots <- c(sprintf("sum(!is.na(%s))",col),
+#       sprintf("%s(%s,na.rm=TRUE)",funs[2:4],col),
+#       "sd/sqrt(n)")
+#    names(dots) <- gsub("^.*::","",funs)  ## ugh
+#    summarise_(data,.dots=dots)
+# }
+# 
+# med %>% group_by(wave,cashTreatment) %>% getStats(total)
+
+
+
+
+#####warning! - insert actual variable name instead of placeholder 
+b = as.name(a)
+colnames(total)[2] = "Value"
+gd <- total %>% group_by(wave,cashTreatment) %>% summarise (mean_val = mean(Value, na.rm = TRUE))
+med<- total %>% group_by(wave,cashTreatment) %>% summarise (med_val = median(Value, na.rm = TRUE))
+
+
+
+
+#med <- total %>% group_by(wave,cashTreatment) %>%  summarise_(funs(median (b , na.rm = TRUE)))
+
+
+ggplot(total, aes(wave, log(total[,2]),
+                  group = respid)) +
+  geom_line(alpha = .01) +
+  geom_line(data = gd, aes(wave, log(mean_val),
+                  group = cashTreatment, color = cashTreatment), alpha = .8, size = 1) +
+   geom_line(data = med, aes(wave, log(med_val),
+                  group = cashTreatment, color = cashTreatment), alpha = .8, size = 1, linetype = "dashed") +
+  theme_bw() + labs(
+    title = paste(a),
+    x = "Survey Wave",
+    y = paste(a, "\n", "Log Scale", sep = ""),
+    color = NULL
+  )
+ 
+ # ggplot(total, aes(wave, log(total[,4]), 
+ #                  group = respid)) +
+ #  geom_line(alpha = .01) +
+ #  geom_line(data = gd, aes(wave, log(gd[,4]), 
+ #                  group = cashTreatment, color = cashTreatment), alpha = .8, size = 1) +  theme_bw() +
+ #  scale_y_continuous(breaks = seq(0, 5, by = 1)) +
+ #  labs(
+ #    title = paste(a),
+ #    x = "Survey Wave",
+ #    y = paste(a, "\n", "Log Scale", sep = ""),
+ #    color = NULL
+ #  )
+ # 
+ # 
+ 
+
+
+```
+
+
+
+
+
+## Correlation across waves in feature
+
+
+```{r}
+library(reshape2)
+
+total = d[, names(d) %in% c(a, "wave", "respid")]
+total[is.na(total)] <- 0
+#total = total[,-1 ]
+w0 = total[total$wave ==0 , c(1,2)]
+w1 = total[total$wave ==1 , c(1,2)]; temp = merge(w0, w1, by = "respid", all = TRUE); colnames(temp) = c("respid",0,1)
+w2 = total[total$wave ==2 , c(1,2)]; temp = merge(temp, w2, by = "respid", all = TRUE); colnames(temp)[4] = 2 
+w3 = total[total$wave ==3 , c(1,2)]; temp = merge(temp, w3, by = "respid", all = TRUE); colnames(temp)[5] = 3
+w4 = total[total$wave ==4 ,c(1,2) ]; temp = merge(temp, w4, by = "respid", all = TRUE); colnames(temp)[6] = 4
+w5 = total[total$wave ==5 ,c(1,2)]; temp = merge(temp, w5, by = "respid", all = TRUE); colnames(temp)[7] = 5
+w6 = total[total$wave ==6 ,c(1,2) ]; temp = merge(temp, w6, by = "respid", all = TRUE); colnames(temp)[8] = 6
+w7 = total[total$wave ==7 ,c(1,2) ]; temp = merge(temp, w7, by = "respid", all = TRUE); colnames(temp)[9] = 7
+w8 = total[total$wave ==8 ,c(1,2) ]; temp = merge(temp, w8, by = "respid", all = TRUE); colnames(temp)[10] = 8
+w9 = total[total$wave ==9 ,c(1,2) ]; temp = merge(temp, w9, by = "respid", all = TRUE); colnames(temp)[11] = 9
+w10 = total[total$wave ==10,c(1,2) ]; temp = merge(temp, w10, by = "respid", all = TRUE); colnames(temp)[12] = 10
+w11 = total[total$wave ==11 ,c(1,2) ]; temp = merge(temp, w11, by = "respid", all = TRUE); colnames(temp)[13] = 11
+w12 = total[total$wave ==12 ,c(1,2) ]; temp = merge(temp, w12, by = "respid", all = TRUE); colnames(temp)[14] = 12
+w13 = total[total$wave ==13 ,c(1,2) ]; temp = merge(temp, w13, by = "respid", all = TRUE); colnames(temp)[15] = 13
+
+temp = temp[,-1]
+# rcb <- function (...) {
+# # rcb <--> ``ragged cbind''
+# xxx <- list(...)
+# n <- max(unlist(lapply(xxx,function(x){ifelse(is.matrix(x),nrow(x),
+# length(x))})))
+# yyy <- lapply(xxx,function(x,n){if(is.matrix(x))
+# rbind(x,matrix(NA,ncol=ncol(x),nrow=n))
+# else c(x,rep(NA,n-length(x)))},n=n)
+# do.call("cbind",yyy)
+# }
+
+library(corrplot)
+# temp =as.data.frame( rcb(w0,w1,w2,w3,w4,w5,w6,w7,w8,w9,w10,w11,w12,w13))
+colnames(temp) <- paste("WAVE", seq(0,13,1), sep = "_")
+temp = (cor(temp, use = "complete.obs"))
+temp = pmax(temp,0)
+
+corrplot(temp, method="color", cl.lim = c(0,1), na.label = "o")
+
+
+
+```
+
+
+## Violin plot
+
+```{r}
+
+total = d[, names(d) %in% c(a, "wave", "respid", "province")]
+total$wave = as.factor(total$wave)
+total = na.omit(total)
+
+GeomSplitViolin <- ggproto("GeomSplitViolin", GeomViolin, draw_group = function(self, data, ..., draw_quantiles = NULL){
+  data <- transform(data, xminv = x - violinwidth * (x - xmin), xmaxv = x + violinwidth * (xmax - x))
+  grp <- data[1,'group']
+  newdata <- plyr::arrange(transform(data, x = if(grp%%2==1) xminv else xmaxv), if(grp%%2==1) y else -y)
+  newdata <- rbind(newdata[1, ], newdata, newdata[nrow(newdata), ], newdata[1, ])
+  newdata[c(1,nrow(newdata)-1,nrow(newdata)), 'x'] <- round(newdata[1, 'x'])
+  if (length(draw_quantiles) > 0 & !scales::zero_range(range(data$y))) {
+    stopifnot(all(draw_quantiles >= 0), all(draw_quantiles <=
+                                              1))
+    quantiles <- create_quantile_segment_frame(data, draw_quantiles)
+    aesthetics <- data[rep(1, nrow(quantiles)), setdiff(names(data), c("x", "y")), drop = FALSE]
+    aesthetics$alpha <- rep(1, nrow(quantiles))
+    both <- cbind(quantiles, aesthetics)
+    quantile_grob <- GeomPath$draw_panel(both, ...)
+    ggplot2:::ggname("geom_split_violin", grobTree(GeomPolygon$draw_panel(newdata, ...), quantile_grob))
+  }
+  else {
+    ggplot2:::ggname("geom_split_violin", GeomPolygon$draw_panel(newdata, ...))
+  }
+})
+
+geom_split_violin <- function (mapping = NULL, data = NULL, stat = "ydensity", position = "identity", ..., draw_quantiles = NULL, trim = FALSE, scale = "area", na.rm = FALSE, show.legend = NA, inherit.aes = TRUE) {
+  layer(data = data, mapping = mapping, stat = stat, geom = GeomSplitViolin, position = position, show.legend = show.legend, inherit.aes = inherit.aes, params = list(trim = trim, scale = scale, draw_quantiles = draw_quantiles, na.rm = na.rm, ...))
+}
+
+
+
+ggplot(total, aes(wave, log(total[,2]), fill=province)) + geom_split_violin() +scale_fill_manual(values=c("red", "blue"))+xlab("Wave")+ylab(paste("Log Scale", "\n", a))
+
+
+```
+
+  
+
+
+```{r}
+
+
+  
+
+
+total = d[, names(d) %in% c(a,  "small", "large", "anyshock", "Q2_19", "Q2_20","Q10_01_A","Q10_01_B","Q10_01_C", "Q10_01_D", "Q10_01_E", "Q10_01_F", "Q10_01_G", "Q10_01_H",  "Q10_01_I", "Q10_01_J", "Q10_01_K", "Q10_01_L", "Q10_01_M", "Q10_01_N", "Q10_01_O", "Q10_01_P", "Q10_01_Q", "Q10_01_R", "familydeath",  "Q10_01_S", "Q10_01_T", "Q10_01_U")]
+
+
+
+
+total$Q10_01_A = ifelse(total$Q10_01_A =="Yes", 1, 0)
+total$Q10_01_B = ifelse(total$Q10_01_B =="Yes", 1, 0)
+total$Q10_01_C = ifelse(total$Q10_01_C =="Yes", 1, 0)
+total$Q10_01_D = ifelse(total$Q10_01_D =="Yes", 1, 0)
+total$Q10_01_E = ifelse(total$Q10_01_E =="Yes", 1, 0)
+total$Q10_01_F = ifelse(total$Q10_01_F =="Yes", 1, 0)
+total$Q10_01_G = ifelse(total$Q10_01_G =="Yes", 1, 0)
+total$Q10_01_H = ifelse(total$Q10_01_H =="Yes", 1, 0)
+total$Q10_01_I = ifelse(total$Q10_01_I =="Yes", 1, 0)
+total$Q10_01_J = ifelse(total$Q10_01_J =="Yes", 1, 0)
+total$Q10_01_K = ifelse(total$Q10_01_K =="Yes", 1, 0)
+total$Q10_01_L = ifelse(total$Q10_01_L =="Yes", 1, 0)
+total$Q10_01_M = ifelse(total$Q10_01_M =="Yes", 1, 0)
+total$Q10_01_N = ifelse(total$Q10_01_N =="Yes", 1, 0)
+total$Q10_01_O = ifelse(total$Q10_01_O =="Yes", 1, 0)
+total$Q10_01_P = ifelse(total$Q10_01_P =="Yes", 1, 0)
+total$Q10_01_Q = ifelse(total$Q10_01_Q =="Yes", 1, 0)
+total$Q10_01_R = ifelse(total$Q10_01_R =="Yes", 1, 0)
+total$Q10_01_S = ifelse(total$Q10_01_S =="Yes", 1, 0)
+total$Q10_01_T = ifelse(total$Q10_01_T =="Yes", 1, 0)
+total$Q10_01_U = ifelse(total$Q10_01_U =="Yes", 1, 0)
+total$Q2_19 = ifelse(total$Q2_19 =="Yes", 1, 0)
+
+
+#str(total)
+
+temp <- as.data.frame( scale(total))
+temp = cbind(d$respid, temp)
+colnames(temp)[1] = "respid"
+
+# library(plm)
+# library(lfe)
+library(coefplot)
+lm1 = lm(temp[,2] ~ small+factor(respid), data = temp  );sub = buildModelCI(lm1); coef = sub[nrow(sub)-1, ]
+lm2 = lm(temp[,2] ~ large+factor(respid), data = temp  );sub = buildModelCI(lm2); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm3 = lm(temp[,2] ~ anyshock+factor(respid), data = temp  );sub = buildModelCI(lm3); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm4 = lm(temp[,2] ~ Q2_19+factor(respid), data = temp  );sub = buildModelCI(lm4); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm5 = lm(temp[,2] ~ Q2_20+factor(respid), data = temp  );sub = buildModelCI(lm5); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm6 = lm(temp[,2] ~ Q10_01_A +factor(respid), data = temp  );sub = buildModelCI(lm6
+                                                                                 ); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm7 = lm(temp[,2] ~ Q10_01_B +factor(respid), data = temp  );sub = buildModelCI(lm7); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm8 = lm(temp[,2] ~ Q10_01_C +factor(respid), data = temp  );sub = buildModelCI(lm8); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm9 = lm(temp[,2] ~ Q10_01_D +factor(respid), data = temp  );sub = buildModelCI(lm9); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm10 = lm(temp[,2] ~ Q10_01_E +factor(respid), data = temp  );sub = buildModelCI(lm10); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm11 = lm(temp[,2] ~ Q10_01_F +factor(respid), data = temp  );sub = buildModelCI(lm11); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm12 = lm(temp[,2] ~ Q10_01_G +factor(respid), data = temp  );sub = buildModelCI(lm12); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm13 = lm(temp[,2] ~ Q10_01_H +factor(respid), data = temp  );sub = buildModelCI(lm13); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm14 = lm(temp[,2] ~ Q10_01_I +factor(respid), data = temp  );sub = buildModelCI(lm14); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm15 = lm(temp[,2] ~ Q10_01_J +factor(respid), data = temp  );sub = buildModelCI(lm15); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm16 = lm(temp[,2] ~ Q10_01_K +factor(respid), data = temp  );sub = buildModelCI(lm16); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm17 = lm(temp[,2] ~ Q10_01_L +factor(respid), data = temp  );sub = buildModelCI(lm17); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm18 = lm(temp[,2] ~ Q10_01_M +factor(respid), data = temp  );sub = buildModelCI(lm18); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm19 = lm(temp[,2] ~ Q10_01_N +factor(respid), data = temp  );sub = buildModelCI(lm19); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm20 = lm(temp[,2] ~ Q10_01_O +factor(respid), data = temp  );sub = buildModelCI(lm20); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm21 = lm(temp[,2] ~ Q10_01_P +factor(respid), data = temp  );sub = buildModelCI(lm21); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm22 = lm(temp[,2] ~ Q10_01_Q +factor(respid), data = temp  );sub = buildModelCI(lm22); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm23 = lm(temp[,2] ~ Q10_01_R +factor(respid), data = temp  );sub = buildModelCI(lm23); coef = rbind(coef, sub[nrow(sub)-1, ])
+#lm24 = lm(temp[,2] ~ familydeath +factor(respid), data = temp  );sub = buildModelCI(lm24); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm25 = lm(temp[,2] ~ Q10_01_S +factor(respid), data = temp  );sub = buildModelCI(lm25); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm26 = lm(temp[,2] ~ Q10_01_T +factor(respid), data = temp  );sub = buildModelCI(lm26); coef = rbind(coef, sub[nrow(sub)-1, ])
+lm27 = lm(temp[,2] ~ Q10_01_U +factor(respid), data = temp  );sub = buildModelCI(lm27); coef = rbind(coef, sub[nrow(sub)-1, ])
+
+# coef
+#
+coef$Model = row.names(coef)
+
+       coef$Coefficient =  c(
+       "Small cash drop" ,
+		    "Large cash drop" ,
+			  "Any shock in past 2 wks",
+	      "Electricity outage",
+			  "Days of electricity outage",
+			  "Received gift",
+			  "Received other income",
+		    "Party or celebration",
+			  "Out-Migration",
+			  "Internal Migration",
+			  "Lower crop yields",
+			  "Crop disease or pests",
+		    "Livestock died or stolen",
+			  "Loss of self-employment",
+		    "Loss of salaried employment",
+			  "End of regular assistance",
+		    "Large fall in sale price of crops",
+		    "Large rise in food prices",
+		    "Breakdown of hh asset",
+        "Illness or accident within hh",
+			  "Birth in hh",
+			  "Death in hh",
+		    "Death outside hh",
+			  
+			  "End of marriage",
+			  "Theft of household belongings",
+			  "House damaged or destroyed")
+
+coefplot(coef, color = "red", shape = 2, sort = c("normal"))+theme_bw()
+
+# coef$Coefficient = factor(coef$Coefficient, levels = rev(coef$Coefficient))
+
+# ggplot(coef, aes(Coefficient, Value)) +
+#   geom_hline(yintercept=0, lty=2, lwd=1, colour="grey50") +
+#
+#   geom_errorbar(aes(ymin=LowOuter, ymax=HighOuter),
+#                 lwd=1.1, colour="darkorange2", width=0.25) +
+#
+#   geom_errorbar(aes(ymin=LowInner, ymax=HighInner),
+#                 lwd=1.5, colour="darkorange3", width=0) +
+#
+#   geom_point(size=3, pch=23, fill="darkorange4") +
+#   theme_bw()+ coord_flip()+ggtitle( colnames(total)[1])
+
+
+
+
+```
