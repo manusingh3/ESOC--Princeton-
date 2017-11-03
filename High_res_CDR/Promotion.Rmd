@@ -1,0 +1,888 @@
+---
+title: "Promotions_CDR"
+author: "Manu"
+date: "October 27, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, cache = TRUE, warning = FALSE, message = FALSE)
+```
+
+####Reading files and removing duplicates
+
+
+```{r}
+# 
+ setwd("C:/Users/manus/Dropbox (ESOC - Princeton)/High-Rez Indicators/Data/Roshan/highrez_sample/cdr/REC")
+# 
+# file1 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive11-3_2015-09_REC_anon-hrdi.csv")
+# 
+# file2 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive11-1_2015-11_REC_anon-hrdi.csv")
+# 
+# file3 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive11-2_2015-09_REC_anon-hrdi.csv")
+# 
+# file4 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive12_2015-10_REC_anon-hrdi.csv")
+# 
+# file5 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive12_2015-12_REC_anon-hrdi.csv")
+# 
+# file6 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive11-2_2015-08_REC_anon-hrdi.csv")
+# 
+# file7 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive12_2016-01_REC_anon-hrdi.csv")
+# 
+# file8 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive12_2016-02_REC_anon-hrdi.csv")
+# 
+# file9 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive12_2016-03_REC_anon-hrdi.csv")
+# 
+# file10 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive12_2016-04_REC_anon-hrdi.csv")
+# 
+# file11 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive13_2016-05_REC_anon-hrdi.csv")
+# 
+# file12 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive14_2016-05_REC_anon-hrdi.csv")
+# 
+# file13 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive14_2016-07_REC_anon-hrdi.csv")
+# 
+# file14 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive13_2016-06_REC_anon-hrdi.csv")
+# 
+# file15 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive14_2016-08_REC_anon-hrdi.csv")
+# 
+# file16 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive14_2016-06_REC_anon-hrdi.csv")
+# 
+# file17 = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\cdr\\REC\\Drive14_2016-09_REC_anon-hrdi.csv")
+# 
+# df = rbind(file1,file2, file3,file4,file5,file6,file7,file8,file9,file10,file11,file12,file13,file14,file15,file16,file17)
+# 
+# 
+# table(duplicated(df))
+# 
+# df = df[!duplicated(df), ]
+
+
+
+```
+
+
+####Matching with user ids - matching by the user initiating the call
+
+
+
+```{r}
+ user = read.csv( "C:\\Users\\manus\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\highRez_phonedatabase_anon.csv")
+# 
+# colnames(user)[4] = "phoneHash1"
+# 
+# library(plyr)
+# 
+# d = join(df, user,
+#      type = "inner")
+
+
+```
+
+
+###Exploring Promotions
+
+```{r}
+
+setwd("C:/Users/ms52/Dropbox (ESOC - Princeton)/High-Rez Indicators/Analysis/Promotions")
+
+d = read.csv("CDR_temp_combined.csv")
+
+library(ggplot2)
+
+d$datetime = as.Date(d$datetime, format = "%Y-%m-%d")
+d$PRODUCTID = as.factor( as.character(d$PRODUCTID))
+d$SUBCOSID = as.factor( as.character(d$SUBCOSID))
+
+#write.csv(d, file = "CDR_temp_combined.csv")
+
+
+temp = as.data.frame( (table(d$PRODUCTID)))
+temp = temp[order(- temp$Freq), ]; list = temp[1:20,1 ]
+
+colnames(temp) = c("PRODUCTID", "Freq")
+temp$Cumulative = cumsum(temp$Freq)/sum(temp$Freq)*100
+temp[1:20, ]
+
+dsub = d[d$PRODUCTID %in% list, ]
+#tapply(d$PRODUCTID, d$datetime, FUN = function(x) length(unique(x)))
+ggplot(dsub, aes(x = datetime, y = PRODUCTID )) + geom_point(size = 2)+ggtitle("Top 20 PRODDUCTIDs and the active duration")+xlab("Time")
+
+temp = as.data.frame( (table(d$SUBCOSID)))
+temp = temp[order(- temp$Freq), ]; list = temp[1:20,1 ]
+dsub = d[d$SUBCOSID %in% list, ]
+
+colnames(temp) = c("SUBCOSID", "Freq")
+temp$Cumulative = cumsum(temp$Freq)/sum(temp$Freq)*100
+temp[1:20, ]
+
+
+#tapply(d$PRODUCTID, d$datetime, FUN = function(x) length(unique(x)))
+ggplot(dsub, aes(x = datetime, y = SUBCOSID )) + geom_point(size = 2)+ggtitle("Top 20 SUBCOSIDs and the active duration")+xlab("Time")
+
+
+```
+
+
+###Combination of SUBCOSID and PRODID pairs
+
+(In the HTML this image is not rendered very well- a seperate image is stored in the DB which is more useful in identifying promotions that started during the study)
+
+```{r}
+
+d$subcosPID = paste(d$SUBCOSID, d$PRODUCTID, sep = "_")
+
+temp = as.data.frame( (table(d$subcosPID)))
+temp = temp[order(- temp$Freq), ]; list = temp[1:30,1 ]
+
+colnames(temp) = c("SUBCOS_PROD_ID", "Freq")
+temp$Cumulative = cumsum(temp$Freq)/sum(temp$Freq)*100
+temp[1:30, ]
+
+
+dsub = d[d$subcosPID %in% list, ]
+#tapply(d$PRODUCTID, d$datetime, FUN = function(x) length(unique(x)))
+ggplot(dsub, aes(x = datetime, y = subcosPID )) + geom_point(size = 2)
+
+#ggplot(dsub, aes(x = datetime)) + geom_histogram(aes(y = ..density..)) + geom_density(aes(fill = subcosPID), alpha = 0.5)+ggtitle("Top 50 SUBCOSID and PRODUCTID pairs and active duration")
+
+
+# geom_split_violin <- function (mapping = NULL, data = NULL, stat = "ydensity", position = "identity", ..., draw_quantiles = NULL, trim = FALSE, scale = "area", na.rm = FALSE, show.legend = NA, inherit.aes = TRUE) {
+#   layer(data = data, mapping = mapping, stat = stat, geom = GeomSplitViolin, position = position, show.legend = show.legend, inherit.aes = inherit.aes, params = list(trim = trim, scale = scale, draw_quantiles = draw_quantiles, na.rm = na.rm, ...))
+# }
+
+
+ggplot(dsub, aes((subcosPID), datetime)) +
+  geom_violin()+coord_flip()+ggtitle("Top 30 SUBCOSIDs and PRODUCTID pairs and adoptions curves")+xlab("Time")
+
+
+```
+
+##Identifying promotions - 
+
+From the graph above I am excluding the pairs of SUBCOSID and PRODID that are active all year round. Subsetting only those that started during the period of study. 
+
+```{r}
+
+#looking only at the non year round subcosID and PID pairs
+
+list = c("400001_704100", "400001_704102", "400001_704176" , "400001_704177", "400001_708257", "400001_708300", "400001_708305", "400001_708306", "400001_708326", "400035_505013" , "400045_704100", "")
+dsub = d[d$subcosPID %in% list, ]
+
+ggplot(dsub, aes((subcosPID), datetime)) +
+  geom_violin( size = 0.85, trim = FALSE)+coord_flip()+theme_classic()+stat_summary(fun.data=mean_sdl, mult=1, 
+                 geom="pointrange", color="red")
+
+# survey = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Bandicoot figures\\bandicoot_shock.csv")
+# 
+# survey = survey[, colnames(survey) %in% c("province", "respid")]
+# 
+# d = merge(survey, d, by = "respid")
+
+
+```
+
+---
+
+### 400035_505013 
+
+Focussing only on individuals and a single promotion 
+
+```{r}
+library(reshape)
+library(dplyr)
+# first time users used "400035_505013" combination
+
+total = data.frame()
+
+
+dsub = d[d$subcosPID == "400035_505013",]
+ggplot(dsub, aes((subcosPID), datetime)) +
+  geom_violin( size = 1.25, trim = FALSE)+coord_flip()+theme_classic()+stat_summary(fun.data=mean_sdl, mult=1, 
+                 geom="pointrange", color="red")+ggtitle("Usage Pattern among respondents for 400035_505013")+ylab("Time")+xlab("SUBCOSID_PRODUCTID PAIR")
+
+ggplot(dsub, aes(x = datetime)) + geom_histogram(aes(y = ..density..)) + geom_density(aes(fill = subcosPID), alpha = 0.5)
+
+
+list = unique (dsub$respid)
+
+for (i in list) {
+  #print (i)
+user = d[d$respid == i, ]
+user1 = user[user$subcosPID == "400035_505013", ]
+user1 = user1[order(user1$datetime),]
+switch = user1[1,9]
+
+
+t_7 = sum(user$call_duration[user$datetime == switch-7])
+t_6 = sum(user$call_duration[user$datetime == switch-6])
+t_5 = sum(user$call_duration[user$datetime == switch-5])
+t_4 = sum(user$call_duration[user$datetime == switch-4])
+t_3 = sum(user$call_duration[user$datetime == switch-3])
+t_2 = sum(user$call_duration[user$datetime == switch-2])
+t_1 = sum(user$call_duration[user$datetime == switch-1])
+t_0 = sum(user$call_duration[user$datetime == switch])
+t1 = sum(user$call_duration[user$datetime == switch+1])
+t2 = sum(user$call_duration[user$datetime == switch+2])
+t3 = sum(user$call_duration[user$datetime == switch+3])
+t4 = sum(user$call_duration[user$datetime == switch+4])
+t5 = sum(user$call_duration[user$datetime == switch+5])
+t6 = sum(user$call_duration[user$datetime == switch+6])
+t7 = sum(user$call_duration[user$datetime == switch+7])
+
+user2 = data.frame(i, t_7,t_6, t_5,t_4,t_3,t_2, t_1, t_0, t1, t2, t3, t4, t5,t6,t7)
+
+# user2 = user[ user$datetime> begin & user$datetime <end, ]
+# user2$begin = begin;user2$end = end; user2$switch = switch
+
+#tapply(user2$call_duration, user2$datetime, sum)
+
+
+total = rbind(total,user2)
+}
+
+colnames(total)[1] = "respid"
+
+temp = melt(total, id.vars = "respid")
+
+med<- temp %>% group_by(variable) %>% summarise (med_val = median(value, na.rm = TRUE))
+mean<- temp %>% group_by(variable) %>% summarise (mean_val = mean(value, na.rm = TRUE))
+
+# ggplot(temp, aes(variable, value)) +
+#   geom_line(aes(group = respid), alpha = .1) +geom_line(data = med, aes(variable, (med_val),
+#                   group = 1), alpha = .8, size = 1, linetype = "dashed") +geom_line(data = mean, aes(variable, (mean_val),
+#                   group = 1), alpha = .8, size = 1) +geom_vline(aes(xintercept = 8), size = 1.2, color = "red")
+
+
+ggplot(temp, aes(variable, log(value))) +
+  geom_line(aes(group = respid), alpha = .1) +geom_line(data = med, aes(variable, log(med_val),
+                  group = 1), alpha = .8, size = 1, linetype = "dashed") +geom_line(data = mean, aes(variable, log(mean_val),group = 1), alpha = .8, size = 1) +ggtitle("SUBCOSID and PRODUCTID 400035_505013")+xlab("7 days before and after switching into promotion") + ylab("Log(Call duration)")+geom_vline(aes(xintercept = 8), size = 1.1, color = "red")+ scale_x_discrete(labels = c("T-7", "T-6","T-5","T-4","T-3","T-2","T-1","T=0", "T+1","T+2","T+3","T+4","T+5","T+6","T+7"))
+  
+ 
+ 
+```
+
+---
+
+### 400001_704100
+
+Focussing only on individuals and a single promotion 
+
+```{r}
+library(reshape)
+library(dplyr)
+
+
+total = data.frame()
+
+
+dsub = d[d$subcosPID == "400001_704100",]
+
+ggplot(dsub, aes((subcosPID), datetime)) +
+  geom_violin( size = 1.25, trim = FALSE)+coord_flip()+theme_classic()+stat_summary(fun.data=mean_sdl, mult=1, 
+                 geom="pointrange", color="red")+ggtitle("Usage Pattern among respondents for 400001_704100")+ylab("Time")+xlab("SUBCOSID_PRODUCTID PAIR")
+
+ggplot(dsub, aes(x = datetime)) + geom_histogram(aes(y = ..density..)) + geom_density(aes(fill = subcosPID), alpha = 0.5)
+
+list = unique (dsub$respid)
+
+for (i in list) {
+  #print (i)
+user = d[d$respid == i, ]
+user1 = user[user$subcosPID == "400001_704100", ]
+user1 = user1[order(user1$datetime),]
+switch = user1[1,9]
+
+
+t_7 = sum(user$call_duration[user$datetime == switch-7])
+t_6 = sum(user$call_duration[user$datetime == switch-6])
+t_5 = sum(user$call_duration[user$datetime == switch-5])
+t_4 = sum(user$call_duration[user$datetime == switch-4])
+t_3 = sum(user$call_duration[user$datetime == switch-3])
+t_2 = sum(user$call_duration[user$datetime == switch-2])
+t_1 = sum(user$call_duration[user$datetime == switch-1])
+t_0 = sum(user$call_duration[user$datetime == switch])
+t1 = sum(user$call_duration[user$datetime == switch+1])
+t2 = sum(user$call_duration[user$datetime == switch+2])
+t3 = sum(user$call_duration[user$datetime == switch+3])
+t4 = sum(user$call_duration[user$datetime == switch+4])
+t5 = sum(user$call_duration[user$datetime == switch+5])
+t6 = sum(user$call_duration[user$datetime == switch+6])
+t7 = sum(user$call_duration[user$datetime == switch+7])
+
+user2 = data.frame(i, t_7,t_6, t_5,t_4,t_3,t_2, t_1, t_0, t1, t2, t3, t4, t5,t6,t7)
+
+# user2 = user[ user$datetime> begin & user$datetime <end, ]
+# user2$begin = begin;user2$end = end; user2$switch = switch
+
+#tapply(user2$call_duration, user2$datetime, sum)
+
+
+total = rbind(total,user2)
+}
+
+colnames(total)[1] = "respid"
+
+temp = melt(total, id.vars = "respid")
+
+med<- temp %>% group_by(variable) %>% summarise (med_val = median(value, na.rm = TRUE))
+mean<- temp %>% group_by(variable) %>% summarise (mean_val = mean(value, na.rm = TRUE))
+
+# ggplot(temp, aes(variable, value)) +
+#   geom_line(aes(group = respid), alpha = .1) +geom_line(data = med, aes(variable, (med_val),
+#                   group = 1), alpha = .8, size = 1, linetype = "dashed") +geom_line(data = mean, aes(variable, (mean_val),
+#                   group = 1), alpha = .8, size = 1) +geom_vline(aes(xintercept = 8), size = 1.2, color = "red")
+
+
+ggplot(temp, aes(variable, log(value))) +
+  geom_line(aes(group = respid), alpha = .1) +geom_line(data = med, aes(variable, log(med_val),
+                  group = 1), alpha = .8, size = 1, linetype = "dashed") +geom_line(data = mean, aes(variable, log(mean_val),group = 1), alpha = .8, size = 1) +ggtitle("SUBCOSID and PRODUCTID 400001_704100")+xlab("7 days before and after switching into promotion") + ylab("Log(Call duration)")+geom_vline(aes(xintercept = 8), size = 1.2, color = "red")+ scale_x_discrete(labels = c("T-7", "T-6","T-5","T-4","T-3","T-2","T-1","T=0", "T+1","T+2","T+3","T+4","T+5","T+6","T+7"))
+
+
+```
+
+---
+
+### 400001_708326
+
+Focussing only on individuals and a single promotion 
+
+```{r}
+library(reshape)
+library(dplyr)
+# first time users used "400035_505013" combination
+
+total = data.frame()
+
+
+dsub = d[d$subcosPID == "400001_708326",]
+
+ggplot(dsub, aes((subcosPID), datetime)) +
+  geom_violin( size = 1.25, trim = FALSE)+coord_flip()+theme_classic()+stat_summary(fun.data=mean_sdl, mult=1, 
+                 geom="pointrange", color="red")+ggtitle("Usage Pattern among respondents for 400001_708326")+ylab("Time \n promotion only lasted little over a month")+xlab("SUBCOSID_PRODUCTID PAIR")
+
+ggplot(dsub, aes(x = datetime)) + geom_histogram(aes(y = ..density..)) + geom_density(aes(fill = subcosPID), alpha = 0.5)+ xlab("Time \n promotion only lasted ;little over a month")
+
+
+list = unique (dsub$respid)
+
+for (i in list) {
+  
+user = d[d$respid == i, ]
+user1 = user[user$subcosPID == "400001_708326", ]
+user1 = user1[order(user1$datetime),]
+switch = user1[1,9]
+
+
+t_7 = sum(user$call_duration[user$datetime == switch-7])
+t_6 = sum(user$call_duration[user$datetime == switch-6])
+t_5 = sum(user$call_duration[user$datetime == switch-5])
+t_4 = sum(user$call_duration[user$datetime == switch-4])
+t_3 = sum(user$call_duration[user$datetime == switch-3])
+t_2 = sum(user$call_duration[user$datetime == switch-2])
+t_1 = sum(user$call_duration[user$datetime == switch-1])
+t_0 = sum(user$call_duration[user$datetime == switch])
+t1 = sum(user$call_duration[user$datetime == switch+1])
+t2 = sum(user$call_duration[user$datetime == switch+2])
+t3 = sum(user$call_duration[user$datetime == switch+3])
+t4 = sum(user$call_duration[user$datetime == switch+4])
+t5 = sum(user$call_duration[user$datetime == switch+5])
+t6 = sum(user$call_duration[user$datetime == switch+6])
+t7 = sum(user$call_duration[user$datetime == switch+7])
+
+user2 = data.frame(i, t_7,t_6, t_5,t_4,t_3,t_2, t_1, t_0, t1, t2, t3, t4, t5,t6,t7)
+
+# user2 = user[ user$datetime> begin & user$datetime <end, ]
+# user2$begin = begin;user2$end = end; user2$switch = switch
+
+#tapply(user2$call_duration, user2$datetime, sum)
+
+
+total = rbind(total,user2)
+}
+
+colnames(total)[1] = "respid"
+
+temp = melt(total, id.vars = "respid")
+
+med<- temp %>% group_by(variable) %>% summarise (med_val = median(value, na.rm = TRUE))
+mean<- temp %>% group_by(variable) %>% summarise (mean_val = mean(value, na.rm = TRUE))
+
+# ggplot(temp, aes(variable, value)) +
+#   geom_line(aes(group = respid), alpha = .1) +geom_line(data = med, aes(variable, (med_val),
+#                   group = 1), alpha = .8, size = 1, linetype = "dashed") +geom_line(data = mean, aes(variable, (mean_val),
+#                   group = 1), alpha = .8, size = 1) +geom_vline(aes(xintercept = 8), size = 1.2, color = "red")
+
+
+ggplot(temp, aes(variable, log(value))) +
+  geom_line(aes(group = respid), alpha = .1) +geom_line(data = med, aes(variable, log(med_val),
+                  group = 1), alpha = .8, size = 1, linetype = "dashed") +geom_line(data = mean, aes(variable, log(mean_val),group = 1), alpha = .8, size = 1) +ggtitle("SUBCOSID and PRODUCTID 400001_708326")+xlab("7 days before and after switching into promotion") + ylab("Log(Call duration)")+geom_vline(aes(xintercept = 8), size = 1.2, color = "red")+ scale_x_discrete(labels = c("T-7", "T-6","T-5","T-4","T-3","T-2","T-1","T=0", "T+1","T+2","T+3","T+4","T+5","T+6","T+7"))
+
+
+```
+
+---
+
+### 400001_704102
+
+Focussing only on individuals and a single promotion 
+
+```{r}
+library(reshape)
+library(dplyr)
+# first time users used "400035_505013" combination
+
+total = data.frame()
+
+
+dsub = d[d$subcosPID == "400001_704102",]
+
+ggplot(dsub, aes((subcosPID), datetime)) +
+  geom_violin( size = 1.25, trim = FALSE)+coord_flip()+theme_classic()+stat_summary(fun.data=mean_sdl, mult=1, 
+                 geom="pointrange", color="red")+ggtitle("Usage Pattern among respondents for 400001_704102")+ylab("Time")+xlab("SUBCOSID_PRODUCTID PAIR")
+
+ggplot(dsub, aes(x = datetime)) + geom_histogram(aes(y = ..density..)) + geom_density(aes(fill = subcosPID), alpha = 0.5)
+
+
+list = unique (dsub$respid)
+
+for (i in list) {
+  
+user = d[d$respid == i, ]
+user1 = user[user$subcosPID == "400001_704102", ]
+user1 = user1[order(user1$datetime),]
+switch = user1[1,9]
+
+
+t_7 = sum(user$call_duration[user$datetime == switch-7])
+t_6 = sum(user$call_duration[user$datetime == switch-6])
+t_5 = sum(user$call_duration[user$datetime == switch-5])
+t_4 = sum(user$call_duration[user$datetime == switch-4])
+t_3 = sum(user$call_duration[user$datetime == switch-3])
+t_2 = sum(user$call_duration[user$datetime == switch-2])
+t_1 = sum(user$call_duration[user$datetime == switch-1])
+t_0 = sum(user$call_duration[user$datetime == switch])
+t1 = sum(user$call_duration[user$datetime == switch+1])
+t2 = sum(user$call_duration[user$datetime == switch+2])
+t3 = sum(user$call_duration[user$datetime == switch+3])
+t4 = sum(user$call_duration[user$datetime == switch+4])
+t5 = sum(user$call_duration[user$datetime == switch+5])
+t6 = sum(user$call_duration[user$datetime == switch+6])
+t7 = sum(user$call_duration[user$datetime == switch+7])
+
+user2 = data.frame(i, t_7,t_6, t_5,t_4,t_3,t_2, t_1, t_0, t1, t2, t3, t4, t5,t6,t7)
+
+# user2 = user[ user$datetime> begin & user$datetime <end, ]
+# user2$begin = begin;user2$end = end; user2$switch = switch
+
+#tapply(user2$call_duration, user2$datetime, sum)
+
+
+total = rbind(total,user2)
+}
+
+colnames(total)[1] = "respid"
+
+temp = melt(total, id.vars = "respid")
+
+med<- temp %>% group_by(variable) %>% summarise (med_val = median(value, na.rm = TRUE))
+mean<- temp %>% group_by(variable) %>% summarise (mean_val = mean(value, na.rm = TRUE))
+
+# ggplot(temp, aes(variable, value)) +
+#   geom_line(aes(group = respid), alpha = .1) +geom_line(data = med, aes(variable, (med_val),
+#                   group = 1), alpha = .8, size = 1, linetype = "dashed") +geom_line(data = mean, aes(variable, (mean_val),
+#                   group = 1), alpha = .8, size = 1) +geom_vline(aes(xintercept = 8), size = 1.2, color = "red")
+
+
+ggplot(temp, aes(variable, log(value))) +
+  geom_line(aes(group = respid), alpha = .1) +geom_line(data = med, aes(variable, log(med_val),
+                  group = 1), alpha = .8, size = 1, linetype = "dashed") +geom_line(data = mean, aes(variable, log(mean_val),group = 1), alpha = .8, size = 1) +ggtitle("SUBCOSID and PRODUCTID 400001_704102")+xlab("7 days before and after switching into promotion") + ylab("Log(Call duration)")+geom_vline(aes(xintercept = 8), size = 1.2, color = "red")+ scale_x_discrete(labels = c("T-7", "T-6","T-5","T-4","T-3","T-2","T-1","T=0", "T+1","T+2","T+3","T+4","T+5","T+6","T+7"))
+
+```
+
+---
+
+### 400001_704176
+
+Focussing only on individuals and a single promotion 
+
+```{r}
+library(reshape)
+library(dplyr)
+# first time users used "400035_505013" combination
+
+total = data.frame()
+
+
+dsub = d[d$subcosPID == "400001_704176",]
+
+ggplot(dsub, aes((subcosPID), datetime)) +
+  geom_violin( size = 1.25, trim = FALSE)+coord_flip()+theme_classic()+stat_summary(fun.data=mean_sdl, mult=1, 
+                 geom="pointrange", color="red")+ggtitle("Usage Pattern among respondents for 400001_704176")+ylab("Time")+xlab("SUBCOSID_PRODUCTID PAIR")
+
+ggplot(dsub, aes(x = datetime)) + geom_histogram(aes(y = ..density..)) + geom_density(aes(fill = subcosPID), alpha = 0.5)
+
+
+list = unique (dsub$respid)
+
+for (i in list) {
+  
+user = d[d$respid == i, ]
+user1 = user[user$subcosPID == "400001_704176", ]
+user1 = user1[order(user1$datetime),]
+switch = user1[1,9]
+
+
+t_7 = sum(user$call_duration[user$datetime == switch-7])
+t_6 = sum(user$call_duration[user$datetime == switch-6])
+t_5 = sum(user$call_duration[user$datetime == switch-5])
+t_4 = sum(user$call_duration[user$datetime == switch-4])
+t_3 = sum(user$call_duration[user$datetime == switch-3])
+t_2 = sum(user$call_duration[user$datetime == switch-2])
+t_1 = sum(user$call_duration[user$datetime == switch-1])
+t_0 = sum(user$call_duration[user$datetime == switch])
+t1 = sum(user$call_duration[user$datetime == switch+1])
+t2 = sum(user$call_duration[user$datetime == switch+2])
+t3 = sum(user$call_duration[user$datetime == switch+3])
+t4 = sum(user$call_duration[user$datetime == switch+4])
+t5 = sum(user$call_duration[user$datetime == switch+5])
+t6 = sum(user$call_duration[user$datetime == switch+6])
+t7 = sum(user$call_duration[user$datetime == switch+7])
+
+user2 = data.frame(i, t_7,t_6, t_5,t_4,t_3,t_2, t_1, t_0, t1, t2, t3, t4, t5,t6,t7)
+
+# user2 = user[ user$datetime> begin & user$datetime <end, ]
+# user2$begin = begin;user2$end = end; user2$switch = switch
+
+#tapply(user2$call_duration, user2$datetime, sum)
+
+
+total = rbind(total,user2)
+}
+
+colnames(total)[1] = "respid"
+
+temp = melt(total, id.vars = "respid")
+
+med<- temp %>% group_by(variable) %>% summarise (med_val = median(value, na.rm = TRUE))
+mean<- temp %>% group_by(variable) %>% summarise (mean_val = mean(value, na.rm = TRUE))
+
+# ggplot(temp, aes(variable, value)) +
+#   geom_line(aes(group = respid), alpha = .1) +geom_line(data = med, aes(variable, (med_val),
+#                   group = 1), alpha = .8, size = 1, linetype = "dashed") +geom_line(data = mean, aes(variable, (mean_val),
+#                   group = 1), alpha = .8, size = 1) +geom_vline(aes(xintercept = 8), size = 1.2, color = "red")
+
+
+ggplot(temp, aes(variable, log(value))) +
+  geom_line(aes(group = respid), alpha = .1) +geom_line(data = med, aes(variable, log(med_val),
+                  group = 1), alpha = .8, size = 1, linetype = "dashed") +geom_line(data = mean, aes(variable, log(mean_val),group = 1), alpha = .8, size = 1) +ggtitle("SUBCOSID and PRODUCTID 400001_704176")+xlab("7 days before and after switching into promotion") + ylab("Log(Call duration)")+geom_vline(aes(xintercept = 8), size = 1.2, color = "red")+ scale_x_discrete(labels = c("T-7", "T-6","T-5","T-4","T-3","T-2","T-1","T=0", "T+1","T+2","T+3","T+4","T+5","T+6","T+7"))
+
+```
+
+---
+
+### 400001_708300
+
+Focussing only on individuals and a single promotion 
+
+```{r}
+library(reshape)
+library(dplyr)
+# first time users used "400035_505013" combination
+
+total = data.frame()
+
+
+dsub = d[d$subcosPID == "400001_708300",]
+
+ggplot(dsub, aes((subcosPID), datetime)) +
+  geom_violin( size = 1.25, trim = FALSE)+coord_flip()+theme_classic()+stat_summary(fun.data=mean_sdl, mult=1, 
+                 geom="pointrange", color="red")+ggtitle("Usage Pattern among respondents for 400001_708300")+ylab("Time")+xlab("SUBCOSID_PRODUCTID PAIR")
+
+ggplot(dsub, aes(x = datetime)) + geom_histogram(aes(y = ..density..)) + geom_density(aes(fill = subcosPID), alpha = 0.5)
+
+
+list = unique (dsub$respid)
+
+for (i in list) {
+  
+user = d[d$respid == i, ]
+user1 = user[user$subcosPID == "400001_708300", ]
+user1 = user1[order(user1$datetime),]
+switch = user1[1,9]
+
+
+t_7 = sum(user$call_duration[user$datetime == switch-7])
+t_6 = sum(user$call_duration[user$datetime == switch-6])
+t_5 = sum(user$call_duration[user$datetime == switch-5])
+t_4 = sum(user$call_duration[user$datetime == switch-4])
+t_3 = sum(user$call_duration[user$datetime == switch-3])
+t_2 = sum(user$call_duration[user$datetime == switch-2])
+t_1 = sum(user$call_duration[user$datetime == switch-1])
+t_0 = sum(user$call_duration[user$datetime == switch])
+t1 = sum(user$call_duration[user$datetime == switch+1])
+t2 = sum(user$call_duration[user$datetime == switch+2])
+t3 = sum(user$call_duration[user$datetime == switch+3])
+t4 = sum(user$call_duration[user$datetime == switch+4])
+t5 = sum(user$call_duration[user$datetime == switch+5])
+t6 = sum(user$call_duration[user$datetime == switch+6])
+t7 = sum(user$call_duration[user$datetime == switch+7])
+
+user2 = data.frame(i, t_7,t_6, t_5,t_4,t_3,t_2, t_1, t_0, t1, t2, t3, t4, t5,t6,t7)
+
+# user2 = user[ user$datetime> begin & user$datetime <end, ]
+# user2$begin = begin;user2$end = end; user2$switch = switch
+
+#tapply(user2$call_duration, user2$datetime, sum)
+
+
+total = rbind(total,user2)
+}
+
+colnames(total)[1] = "respid"
+
+temp = melt(total, id.vars = "respid")
+
+med<- temp %>% group_by(variable) %>% summarise (med_val = median(value, na.rm = TRUE))
+mean<- temp %>% group_by(variable) %>% summarise (mean_val = mean(value, na.rm = TRUE))
+
+# ggplot(temp, aes(variable, value)) +
+#   geom_line(aes(group = respid), alpha = .1) +geom_line(data = med, aes(variable, (med_val),
+#                   group = 1), alpha = .8, size = 1, linetype = "dashed") +geom_line(data = mean, aes(variable, (mean_val),
+#                   group = 1), alpha = .8, size = 1) +geom_vline(aes(xintercept = 8), size = 1.2, color = "red")
+
+
+ggplot(temp, aes(variable, log(value))) +
+  geom_line(aes(group = respid), alpha = .1) +geom_line(data = med, aes(variable, log(med_val),
+                  group = 1), alpha = .8, size = 1, linetype = "dashed") +geom_line(data = mean, aes(variable, log(mean_val),group = 1), alpha = .8, size = 1) +ggtitle("SUBCOSID and PRODUCTID 400001_708300")+xlab("7 days before and after switching into promotion") + ylab("Log(Call duration)")+geom_vline(aes(xintercept = 8), size = 1.2, color = "red")+ scale_x_discrete(labels = c("T-7", "T-6","T-5","T-4","T-3","T-2","T-1","T=0", "T+1","T+2","T+3","T+4","T+5","T+6","T+7"))
+
+```
+
+---
+
+### 400001_708305
+
+Focussing only on individuals and a single promotion 
+
+```{r}
+library(reshape)
+library(dplyr)
+# first time users used "400035_505013" combination
+
+total = data.frame()
+
+
+dsub = d[d$subcosPID == "400001_708305",]
+
+ggplot(dsub, aes((subcosPID), datetime)) +
+  geom_violin( size = 1.25, trim = FALSE)+coord_flip()+theme_classic()+stat_summary(fun.data=mean_sdl, mult=1, 
+                 geom="pointrange", color="red")+ggtitle("Usage Pattern among respondents for 400001_708305")+ylab("Time")+xlab("SUBCOSID_PRODUCTID PAIR")
+
+ggplot(dsub, aes(x = datetime)) + geom_histogram(aes(y = ..density..)) + geom_density(aes(fill = subcosPID), alpha = 0.5)
+
+
+list = unique (dsub$respid)
+
+for (i in list) {
+  
+user = d[d$respid == i, ]
+user1 = user[user$subcosPID == "400001_708305", ]
+user1 = user1[order(user1$datetime),]
+switch = user1[1,9]
+
+
+t_7 = sum(user$call_duration[user$datetime == switch-7])
+t_6 = sum(user$call_duration[user$datetime == switch-6])
+t_5 = sum(user$call_duration[user$datetime == switch-5])
+t_4 = sum(user$call_duration[user$datetime == switch-4])
+t_3 = sum(user$call_duration[user$datetime == switch-3])
+t_2 = sum(user$call_duration[user$datetime == switch-2])
+t_1 = sum(user$call_duration[user$datetime == switch-1])
+t_0 = sum(user$call_duration[user$datetime == switch])
+t1 = sum(user$call_duration[user$datetime == switch+1])
+t2 = sum(user$call_duration[user$datetime == switch+2])
+t3 = sum(user$call_duration[user$datetime == switch+3])
+t4 = sum(user$call_duration[user$datetime == switch+4])
+t5 = sum(user$call_duration[user$datetime == switch+5])
+t6 = sum(user$call_duration[user$datetime == switch+6])
+t7 = sum(user$call_duration[user$datetime == switch+7])
+
+user2 = data.frame(i, t_7,t_6, t_5,t_4,t_3,t_2, t_1, t_0, t1, t2, t3, t4, t5,t6,t7)
+
+# user2 = user[ user$datetime> begin & user$datetime <end, ]
+# user2$begin = begin;user2$end = end; user2$switch = switch
+
+#tapply(user2$call_duration, user2$datetime, sum)
+
+
+total = rbind(total,user2)
+}
+
+colnames(total)[1] = "respid"
+
+temp = melt(total, id.vars = "respid")
+
+med<- temp %>% group_by(variable) %>% summarise (med_val = median(value, na.rm = TRUE))
+mean<- temp %>% group_by(variable) %>% summarise (mean_val = mean(value, na.rm = TRUE))
+
+# ggplot(temp, aes(variable, value)) +
+#   geom_line(aes(group = respid), alpha = .1) +geom_line(data = med, aes(variable, (med_val),
+#                   group = 1), alpha = .8, size = 1, linetype = "dashed") +geom_line(data = mean, aes(variable, (mean_val),
+#                   group = 1), alpha = .8, size = 1) +geom_vline(aes(xintercept = 8), size = 1.2, color = "red")
+
+
+ggplot(temp, aes(variable, log(value))) +
+  geom_line(aes(group = respid), alpha = .1) +geom_line(data = med, aes(variable, log(med_val),
+                  group = 1), alpha = .8, size = 1, linetype = "dashed") +geom_line(data = mean, aes(variable, log(mean_val),group = 1), alpha = .8, size = 1) +ggtitle("SUBCOSID and PRODUCTID 400001_708305")+xlab("7 days before and after switching into promotion") + ylab("Log(Call duration)")+geom_vline(aes(xintercept = 8), size = 1.2, color = "red")+ scale_x_discrete(labels = c("T-7", "T-6","T-5","T-4","T-3","T-2","T-1","T=0", "T+1","T+2","T+3","T+4","T+5","T+6","T+7"))
+
+```
+
+---
+
+### 400045_704100
+
+Focussing only on individuals and a single promotion 
+
+```{r}
+library(reshape)
+library(dplyr)
+# first time users used "400035_505013" combination
+
+total = data.frame()
+
+
+dsub = d[d$subcosPID == "400045_704100",]
+
+ggplot(dsub, aes((subcosPID), datetime)) +
+  geom_violin( size = 1.25, trim = FALSE)+coord_flip()+theme_classic()+stat_summary(fun.data=mean_sdl, mult=1, 
+                 geom="pointrange", color="red")+ggtitle("Usage Pattern among respondents for 400045_704100")+ylab("Time")+xlab("SUBCOSID_PRODUCTID PAIR")
+
+ggplot(dsub, aes(x = datetime)) + geom_histogram(aes(y = ..density..)) + geom_density(aes(fill = subcosPID), alpha = 0.5)
+
+
+list = unique (dsub$respid)
+
+for (i in list) {
+  
+user = d[d$respid == i, ]
+user1 = user[user$subcosPID == "400045_704100", ]
+user1 = user1[order(user1$datetime),]
+switch = user1[1,9]
+
+
+t_7 = sum(user$call_duration[user$datetime == switch-7])
+t_6 = sum(user$call_duration[user$datetime == switch-6])
+t_5 = sum(user$call_duration[user$datetime == switch-5])
+t_4 = sum(user$call_duration[user$datetime == switch-4])
+t_3 = sum(user$call_duration[user$datetime == switch-3])
+t_2 = sum(user$call_duration[user$datetime == switch-2])
+t_1 = sum(user$call_duration[user$datetime == switch-1])
+t_0 = sum(user$call_duration[user$datetime == switch])
+t1 = sum(user$call_duration[user$datetime == switch+1])
+t2 = sum(user$call_duration[user$datetime == switch+2])
+t3 = sum(user$call_duration[user$datetime == switch+3])
+t4 = sum(user$call_duration[user$datetime == switch+4])
+t5 = sum(user$call_duration[user$datetime == switch+5])
+t6 = sum(user$call_duration[user$datetime == switch+6])
+t7 = sum(user$call_duration[user$datetime == switch+7])
+
+user2 = data.frame(i, t_7,t_6, t_5,t_4,t_3,t_2, t_1, t_0, t1, t2, t3, t4, t5,t6,t7)
+
+# user2 = user[ user$datetime> begin & user$datetime <end, ]
+# user2$begin = begin;user2$end = end; user2$switch = switch
+
+#tapply(user2$call_duration, user2$datetime, sum)
+
+
+total = rbind(total,user2)
+}
+
+colnames(total)[1] = "respid"
+
+temp = melt(total, id.vars = "respid")
+
+med<- temp %>% group_by(variable) %>% summarise (med_val = median(value, na.rm = TRUE))
+mean<- temp %>% group_by(variable) %>% summarise (mean_val = mean(value, na.rm = TRUE))
+
+# ggplot(temp, aes(variable, value)) +
+#   geom_line(aes(group = respid), alpha = .1) +geom_line(data = med, aes(variable, (med_val),
+#                   group = 1), alpha = .8, size = 1, linetype = "dashed") +geom_line(data = mean, aes(variable, (mean_val),
+#                   group = 1), alpha = .8, size = 1) +geom_vline(aes(xintercept = 8), size = 1.2, color = "red")
+
+
+ggplot(temp, aes(variable, log(value))) +
+  geom_line(aes(group = respid), alpha = .1) +geom_line(data = med, aes(variable, log(med_val),
+                  group = 1), alpha = .8, size = 1, linetype = "dashed") +geom_line(data = mean, aes(variable, log(mean_val),group = 1), alpha = .8, size = 1) +ggtitle("SUBCOSID and PRODUCTID 400045_704100")+xlab("7 days before and after switching into promotion") + ylab("Log(Call duration)")+geom_vline(aes(xintercept = 8), size = 1.2, color = "red")+ scale_x_discrete(labels = c("T-7", "T-6","T-5","T-4","T-3","T-2","T-1","T=0", "T+1","T+2","T+3","T+4","T+5","T+6","T+7"))
+
+```
+
+---
+
+###Plotting regressions
+
+
+```{r}
+# library(dummies)
+# ###Plotting Regression
+# dsub = d[d$subcosPID == "400001_708300",]
+# df = d[!d$subcosPID =="400001_708300",]
+# 
+# dsub = dsub[order(dsub$datetime),]
+# switch = dsub[1,9]; begin = switch-7; end = switch+7
+# 
+# list = unique (dsub$respid)
+# user = d[(d$respid %in% list) & (d$datetime >begin ) &(d$datetime<end), ]
+# user$user = "user"
+# other = df[(df$datetime >begin ) &(df$datetime<end),]
+# other$user = "other"
+# total = rbind(user, other)
+# total$user = as.factor(total$user)
+# # datetime.f = factor(total$datetime)
+# # dummies = model.matrix(~datetime.f)
+# 
+# total1 <- cbind(total[,colnames(total) %in% c("call_duration", "datetime","user")], dummy(total$datetime, sep = "_"))
+# 
+# library(scales)
+# 
+#   
+# ggplot(total, aes(x = (datetime), y = log(call_duration), colour = user)) + stat_smooth( method = "lm" ) +geom_vline(xintercept = as.numeric(as.Date("2016-05-15")), linetype=4, col = "red", size = 1.2)+geom_jitter(alpha = 0.01, shape = 16)+ggtitle("Call Duration difference between Users and Non Users of Promotion \n 400001_70830: AALI user for FN discount product (Add on Bundle- Voice)")+annotate(geom="text",x=as.Date("2016-05-15"),y=0,label="First Day of promotion in use")+scale_x_date(labels = date_format("%d-%b"), date_breaks = "2 days")+ theme_classic()
+#   
+# ggplot(total, aes(x = (datetime), y = (call_duration), colour = user)) + stat_smooth( method = "lm" ) +geom_vline(xintercept = as.numeric(as.Date("2016-05-15")), linetype=4, col = "red", size = 1.2)+ggtitle("Call Duration difference between Users and Non Users of Promotion \n 400001_70830: AALI user for FN discount product (Add on Bundle- Voice)")+annotate(geom="text",x=as.Date("2016-05-15"),y=0,label="First Day of promotion in use")+scale_x_date(labels = date_format("%d-%b"), date_breaks = "2 days")+ theme_classic()
+#   
+#   
+#   
+#   
+#   scale_x_date(date_breaks = "1 week", date_minor_breaks = "1 day", date_labels = "%d")
+#  
+#   
+# 
+# 
+#    lm1 = lm( data = total1, call_duration~.)
+# lm = lm(data = total, call_duration+user)
+
+
+```
+
+
+#### Exploring if concurrent promotions or plans are being used
+
+The number of concurrent SUBCOSIDs and PRODUCTIDs within a single user on a single day are calculated and shown
+
+```{r}
+
+
+
+temp =as.data.frame(  d %>% group_by(respid, subcosPID ,datetime) %>% summarise(count = n()))
+
+ggplot(data=temp, aes((temp$count))) + geom_histogram(binwidth = 5)+theme_bw()
+
+temp = as.data.frame( table(temp$count))
+
+colnames(temp)[1] = "Count of subcosPID per user per day" 
+
+temp$Cumulative = cumsum(temp$Freq)/sum(temp$Freq)*100
+
+temp[1:10,]
+
+```
+
