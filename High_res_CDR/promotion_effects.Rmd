@@ -74,66 +74,68 @@ setwd("C:/Users/ms52/Dropbox (ESOC - Princeton)/High-Rez Indicators/Analysis/Pro
 
 ### MCreating classes and for the respondents
 ```{r}
-total = read.csv("respid_ngrams.csv")
-
-# temp = as.data.frame(table(d$respid))
-# temp = temp[temp$Freq >5, ]
-# list  = temp$Var1
-# length(list)
-# total = data.frame()
-# total = data.frame()
-# for( i in list){
-# df = d[d$respid == i,]
-# x = concatenate( as.character( df$subcosPID))
-# ng <- ngram (x , n =2)
-# temp = get.phrasetable (ng)
-# temp$prop =   temp$prop*100
-# temp$Cumulative = cumsum(temp$freq)/sum(temp$freq)*100
-# temp = temp[1:10,]
-# temp$respid = i
-# print(i)
-# total = rbind(total, temp)
-# }
-
-# write.csv(total, "respid_ngrams.csv")
-# head(total)
-# head(total, n= 50)
-# total = na.omit(total)
-# head(total, n= 50)
-temp = total[, colnames(total) %in% c("respid", "ngrams")]
-head(temp)
-library(reshape2)
-
-
-t =  dcast(temp, respid~ngrams)
-head(t[1:10,1:10])
-
-
-##runnning K means clustering Latent Class Modelling takes too long to converge - 
-
-library("cluster")
-library("factoextra")
-library("magrittr")
-library(fpc)
-
-# res.dist <- get_dist(t[, 2:659], stand = TRUE, method = "pearson")
-# fviz_dist(res.dist, 
-#    gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
-
-
-
-set.seed(20)
-clust <- kmeans(t[, 2:659], 12, nstart = 20)
-
-t$Class = clust$cluster
-
-#write.csv( t, file = "kmeans_class.csv")
-
-temp = t[, colnames(t) %in% c("Class", "respid")]
-temp = as.factor(as.character(temp$Class))
-
-temp =  dcast(t, respid~Class, function(x) 1, fill = 0)
-temp[is.na(temp)] = 0
+# total = read.csv("respid_ngrams.csv")
+# 
+# # temp = as.data.frame(table(d$respid))
+# # temp = temp[temp$Freq >5, ]
+# # list  = temp$Var1
+# # length(list)
+# # total = data.frame()
+# # total = data.frame()
+# # for( i in list){
+# # df = d[d$respid == i,]
+# # x = concatenate( as.character( df$subcosPID))
+# # ng <- ngram (x , n =2)
+# # temp = get.phrasetable (ng)
+# # temp$prop =   temp$prop*100
+# # temp$Cumulative = cumsum(temp$freq)/sum(temp$freq)*100
+# # temp = temp[1:10,]
+# # temp$respid = i
+# # print(i)
+# # total = rbind(total, temp)
+# # }
+# 
+# # write.csv(total, "respid_ngrams.csv")
+# # head(total)
+# # head(total, n= 50)
+# # total = na.omit(total)
+# # head(total, n= 50)
+# temp = total[, colnames(total) %in% c("respid", "ngrams")]
+# head(temp)
+# library(reshape2)
+# 
+# 
+# t =  dcast(temp, respid~ngrams)
+# head(t[1:10,1:10])
+# 
+# 
+# ##runnning K means clustering Latent Class Modelling takes too long to converge - 
+# 
+# library("cluster")
+# library("factoextra")
+# library("magrittr")
+# library(fpc)
+# 
+# # res.dist <- get_dist(t[, 2:659], stand = TRUE, method = "pearson")
+# # fviz_dist(res.dist, 
+# #    gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+# 
+# 
+# 
+# set.seed(20)
+# clust <- kmeans(t[, 2:659], 12, nstart = 20)
+# 
+# t$Class = clust$cluster
+# 
+# #write.csv( t, file = "kmeans_class.csv")
+# 
+# temp = t[, colnames(t) %in% c("Class", "respid")]
+# temp = as.factor(as.character(temp$Class))
+# 
+# temp =  dcast(t, respid~Class, function(x) 1, fill = 0)
+# temp[is.na(temp)] = 0
+# 
+# write.csv(temp, file = "12classes.csv")
 
 ```
 
@@ -143,10 +145,11 @@ temp[is.na(temp)] = 0
 
 d = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Bandicoot figures\\bandicoot_shock.csv")
 
-
+temp = read.csv("12classes.csv")
 
 require(randomForest)
 library(car)
+
 
 
 ```
@@ -158,14 +161,126 @@ library(car)
 
 
 
-##Any Cash Drop - 
+##Any Cash Drop - without using any promotions
 ```{r}
- plsFit <- train(Class ~ .,
-+ data = training,
-+ method = "pls",
-+ ## Center and scale the predictors for the training
-+ ## set and all future samples.
-+ preProc = c("center", "scale"))
+library(caret)
+library(dplyr)
+library(verification)
+library(ROCR)
+
+d = d[, -(764:789)]
+d = d[, -(765:766)]
+
+d$anyshock = as.factor(as.character(d$anyshock))
+# d = d[, sapply(d, function(col) length(unique(col))) > 1]
+# d = d[, sapply(d, nlevels) < 5 ]
+d = select_if(d, is.numeric)
+nzv_cols <- nearZeroVar(d)
+d <- d[, -nzv_cols]
+d[is.na(d)] = 0
+
+d$anyshock = as.factor(as.character(d$anyshock))
+index = createDataPartition(d$respid , p = 0.8, list = FALSE)
+train1 = d[index,]
+test1 = d[-index, ]
+d$anyshock = as.factor(as.character(d$anyshock))
+
+dnew = merge(d, temp, by = "respid")
+index2 = createDataPartition(dnew$respid , p = 0.8, list = FALSE)
+train2 = dnew[index2,]
+test2 = dnew[-index2, ]
+dnew$anyshock = as.factor(as.character(dnew$anyshock))
+
+######k fold cross validation##########
+k = 10
+n = floor(nrow(d)/k)
+err.vect = rep(NA,k)
+
+for (i in 1:k){
+
+s1 = ((i-1)* n+1)
+s2 = (i*n)
+subset = s1:s2
+cv.train = d[-subset,]
+cv.test = d[subset,]
+
+fit = randomForest(anyshock~., data=cv.train1, ntree = 250)
+pred1=predict(fit, cv.test, type = "prob")[,2]
+err.vect =   roc.area(as.numeric( as.character( cv.test$anyshock)), pred1)$A
+print(err.vect)
+
+}
+
+# ctrl <- trainControl(method = "repeatedcv")
+# 
+# 
+# rf1<-train(anyshock~.,data=train1,method="rf",
+#                 trControl=trainControl(method="cv",number=5),
+#                 prox=TRUE,allowParallel=TRUE)
+
+#fit1=randomForest(anyshock~., data=train1)
+pred <- (predict(fit1, test1))
+ 
+table(test1$anyshock,pred)
+ 
+ sum(diag(confMat))/sum(confMat)
+
+
+
+```
+
+####Using promotions
+```{r}
+
+library(caret)
+library(dplyr)
+library(verification)
+library(ROCR)
+
+
+dnew = merge(d, temp, by = "respid")
+d = dnew
+index2 = createDataPartition(d$respid , p = 0.8, list = FALSE)
+train2 = dnew[index2,]
+test2 = dnew[-index2, ]
+dnew$anyshock = as.factor(as.character(d$anyshock))
+
+######k fold cross validation##########
+k = 10
+n = floor(nrow(d)/k)
+err.vect = rep(NA,k)
+
+for (i in 1:k){
+
+s1 = ((i-1)* n+1)
+s2 = (i*n)
+subset = s1:s2
+cv.train = d[-subset,]
+cv.test = d[subset,]
+
+fit = randomForest(anyshock~., data=cv.train1, ntree = 250)
+pred1=predict(fit, cv.test, type = "prob")[,2]
+err.vect =   roc.area(as.numeric( as.character( cv.test$anyshock)), pred1)$A
+print(err.vect)
+
+}
+
+# ctrl <- trainControl(method = "repeatedcv")
+# 
+# 
+# rf1<-train(anyshock~.,data=train1,method="rf",
+#                 trControl=trainControl(method="cv",number=5),
+#                 prox=TRUE,allowParallel=TRUE)
+
+#fit1=randomForest(anyshock~., data=train1)
+pred <- (predict(fit1, test1))
+ 
+table(test1$anyshock,pred)
+ 
+ sum(diag(confMat))/sum(confMat)
+
+
+
 
 
 ```
