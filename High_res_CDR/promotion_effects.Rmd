@@ -1,0 +1,171 @@
+---
+title: "Promotion Effects"
+author: "Manu"
+date: "November 3, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, cache = TRUE, warning = FALSE, message = FALSE)
+```
+
+
+### Creating and exploring ngrams -SUBCOSID
+
+```{r}
+
+setwd("C:/Users/ms52/Dropbox (ESOC - Princeton)/High-Rez Indicators/Analysis/Promotions")
+
+# d = read.csv("CDR_temp_combined.csv")
+# 
+# library(dplyr)
+# #library(tidytext)
+# library(ngram)
+# 
+# df = sample_n(d, 500)
+
+```
+
+###SUBCOSID 3 grams - top 50
+```{r}
+
+# x = concatenate( as.character( df$SUBCOSID))
+# 
+# string.summary(x)
+# 
+# ng <- ngram (x , n =2)
+# 
+# # print (ng , output = "full")
+# # 
+# # print (ng , output = "truncated")
+# 
+# test1 = get.phrasetable (ng)
+# 
+# test1$prop =   test1$prop*100
+# test1$Cumulative = cumsum(test1$freq)/sum(test1$freq)*100
+# head(test1, n= 50)
+
+```
+
+
+```{r}
+
+# x = concatenate( as.character( df$PRODUCTID))
+# 
+# string.summary(x)
+# 
+# ng <- ngram (x , n =2)
+# 
+# # print (ng , output = "full")
+# # 
+# # print (ng , output = "truncated")
+# 
+# test2 = get.phrasetable (ng)
+# 
+# test2$prop =   test2$prop*100
+# test2$Cumulative = cumsum(test2$freq)/sum(test2$freq)*100
+# 
+# head(test2, n= 50)
+```
+
+
+
+
+
+### MCreating classes and for the respondents
+```{r}
+total = read.csv("respid_ngrams.csv")
+
+# temp = as.data.frame(table(d$respid))
+# temp = temp[temp$Freq >5, ]
+# list  = temp$Var1
+# length(list)
+# total = data.frame()
+# total = data.frame()
+# for( i in list){
+# df = d[d$respid == i,]
+# x = concatenate( as.character( df$subcosPID))
+# ng <- ngram (x , n =2)
+# temp = get.phrasetable (ng)
+# temp$prop =   temp$prop*100
+# temp$Cumulative = cumsum(temp$freq)/sum(temp$freq)*100
+# temp = temp[1:10,]
+# temp$respid = i
+# print(i)
+# total = rbind(total, temp)
+# }
+
+# write.csv(total, "respid_ngrams.csv")
+# head(total)
+# head(total, n= 50)
+# total = na.omit(total)
+# head(total, n= 50)
+temp = total[, colnames(total) %in% c("respid", "ngrams")]
+head(temp)
+library(reshape2)
+
+
+t =  dcast(temp, respid~ngrams)
+head(t[1:10,1:10])
+
+
+##runnning K means clustering Latent Class Modelling takes too long to converge - 
+
+library("cluster")
+library("factoextra")
+library("magrittr")
+library(fpc)
+
+# res.dist <- get_dist(t[, 2:659], stand = TRUE, method = "pearson")
+# fviz_dist(res.dist, 
+#    gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+
+
+
+set.seed(20)
+clust <- kmeans(t[, 2:659], 12, nstart = 20)
+
+t$Class = clust$cluster
+
+#write.csv( t, file = "kmeans_class.csv")
+
+temp = t[, colnames(t) %in% c("Class", "respid")]
+temp = as.factor(as.character(temp$Class))
+
+temp =  dcast(t, respid~Class, function(x) 1, fill = 0)
+temp[is.na(temp)] = 0
+
+```
+
+####Random Forest with and without 12 new classes
+
+```{r}
+
+d = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Bandicoot figures\\bandicoot_shock.csv")
+
+
+
+require(randomForest)
+library(car)
+
+
+```
+      
+
+
+
+
+
+
+
+##Any Cash Drop - 
+```{r}
+ plsFit <- train(Class ~ .,
++ data = training,
++ method = "pls",
++ ## Center and scale the predictors for the training
++ ## set and all future samples.
++ preProc = c("center", "scale"))
+
+
+```
