@@ -146,6 +146,7 @@ setwd("C:/Users/ms52/Dropbox (ESOC - Princeton)/High-Rez Indicators/Analysis/Pro
 d = read.csv("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Bandicoot figures\\bandicoot_shock.csv")
 
 temp = read.csv("12classes.csv")
+temp = temp[, -1]
 
 require(randomForest)
 library(car)
@@ -171,7 +172,7 @@ library(ROCR)
 d = d[, -(764:789)]
 d = d[, -(765:766)]
 
-d$anyshock = as.factor(as.character(d$anyshock))
+anyshock = d[, colnames(d) %in% c("respid", "anyshock")]
 # d = d[, sapply(d, function(col) length(unique(col))) > 1]
 # d = d[, sapply(d, nlevels) < 5 ]
 d = select_if(d, is.numeric)
@@ -179,17 +180,18 @@ nzv_cols <- nearZeroVar(d)
 d <- d[, -nzv_cols]
 d[is.na(d)] = 0
 
+#d = cbind(d, anyshock$anyshock)
 d$anyshock = as.factor(as.character(d$anyshock))
 index = createDataPartition(d$respid , p = 0.8, list = FALSE)
 train1 = d[index,]
 test1 = d[-index, ]
 d$anyshock = as.factor(as.character(d$anyshock))
 
-dnew = merge(d, temp, by = "respid")
-index2 = createDataPartition(dnew$respid , p = 0.8, list = FALSE)
-train2 = dnew[index2,]
-test2 = dnew[-index2, ]
-dnew$anyshock = as.factor(as.character(dnew$anyshock))
+# dnew = inner_join(d, temp)
+# index2 = createDataPartition(dnew$respid , p = 0.8, list = FALSE)
+# train2 = dnew[index2,]
+# test2 = dnew[-index2, ]
+# dnew$anyshock = as.factor(as.character(dnew$anyshock))
 
 ######k fold cross validation##########
 k = 10
@@ -204,7 +206,7 @@ subset = s1:s2
 cv.train = d[-subset,]
 cv.test = d[subset,]
 
-fit = randomForest(anyshock~., data=cv.train1, ntree = 250)
+fit = randomForest(anyshock~., data=cv.train, ntree = 250)
 pred1=predict(fit, cv.test, type = "prob")[,2]
 err.vect =   roc.area(as.numeric( as.character( cv.test$anyshock)), pred1)$A
 print(err.vect)
@@ -239,8 +241,8 @@ library(ROCR)
 
 
 dnew = merge(d, temp, by = "respid")
-d = dnew
-index2 = createDataPartition(d$respid , p = 0.8, list = FALSE)
+#d = dnew
+index2 = createDataPartition(dnew$respid , p = 0.8, list = FALSE)
 train2 = dnew[index2,]
 test2 = dnew[-index2, ]
 dnew$anyshock = as.factor(as.character(d$anyshock))
@@ -258,7 +260,7 @@ subset = s1:s2
 cv.train = d[-subset,]
 cv.test = d[subset,]
 
-fit = randomForest(anyshock~., data=cv.train1, ntree = 250)
+fit = randomForest(anyshock~., data=cv.train, ntree = 250)
 pred1=predict(fit, cv.test, type = "prob")[,2]
 err.vect =   roc.area(as.numeric( as.character( cv.test$anyshock)), pred1)$A
 print(err.vect)
