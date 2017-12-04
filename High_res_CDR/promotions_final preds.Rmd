@@ -1,0 +1,464 @@
+---
+title: "promotion_time_effects"
+author: "Manu"
+date: "November 20, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, cache = TRUE, warning = FALSE, message = FALSE)
+```
+
+
+```{r}
+library(ngram)
+
+setwd("C:/Users/ms52/Dropbox (ESOC - Princeton)/High-Rez Indicators/Analysis/Promotions")
+
+d = read.csv("CDR_temp_combined.csv")
+
+bandi =read.csv( "C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\bandicoot\\HRDI_bandicoot_indicators_full-14days.csv")
+
+d$datetime = as.Date(d$datetime, format = "%Y-%m-%d")
+dsub = subset(d, d$datetime < "2016-03-01")
+
+
+########################################################################
+temp = as.data.frame(table(dsub$respid))
+temp = temp[temp$Freq >2, ]
+list  = temp$Var1
+length(list)
+
+total = data.frame()
+for( i in list){
+  print(i)
+df = dsub[dsub$respid == i,]
+x = concatenate(as.character( df$subcosPID))
+ng <- ngram (x , n =2)
+temp = get.phrasetable (ng)
+temp$prop =   temp$prop*100
+temp$Cumulative = cumsum(temp$freq)/sum(temp$freq)*100
+temp = temp[1:10,]
+temp$respid = i
+print(i)
+total = rbind(total, temp)
+}
+
+
+total = na.omit(total)
+head(total, n= 50)
+temp = total[, colnames(total) %in% c("respid", "ngrams")]
+head(temp)
+temp$respid = as.numeric(temp$respid)
+library(reshape2)
+
+t =  dcast(temp, respid~ngrams, function(x) 1, fill = 0)
+head(t[1:10,1:10])
+########################################################################
+library("cluster")
+
+set.seed(20)
+clust <- kmeans(t[, 2:ncol(t)], 10, nstart = 20)
+t$Class = clust$cluster
+clust$size
+
+#write.csv( t, file = "kmeans_class.csv")
+
+temp = t[, colnames(t) %in% c("Class", "respid")]
+temp = as.factor(as.character(temp$Class))
+
+temp =  dcast(t, respid~Class, function(x) 1, fill = 0)
+
+write.csv(temp, file = "resp_10class_full_before_cash_drop.csv")
+
+```
+
+
+
+######Prediction task 
+
+
+
+```{r}
+
+library(ggplot2)
+library(gbm,enet)
+
+library(mlbench)
+library(caret)
+library(pROC)
+
+library(haven)
+
+library(robustHD)
+library(xgboost)
+library(doParallel)
+
+
+
+survey     <- read_dta("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Sayara\\alldata_clean\\highRez_allrounds_long_clean.dta")
+
+colnames(bandi)[1] = "respid"
+d <- merge(bandi, survey, by = c("respid","wave"))
+
+
+cl <- makeCluster(3)
+registerDoParallel(cl)		        # Register parallel backend
+getDoParWorkers()
+
+control <- trainControl(method="repeatedcv", number=5, repeats=1)
+
+
+yColumnName <- 'cashTreatment'
+yColumnName <- 'wealthindex2'
+yCol        <- grep(yColumnName, colnames(d))
+d           <- d[!is.na(d[,yColumnName]),]
+y           <- d[,yCol]
+
+
+# take subset of columns of interest
+xStartIndex <- grep('reporting__number_of_records', colnames(d))
+xEndIndex   <- grep('churn_rate__std', colnames(d))
+
+# xCols <- c(1,2,19,23,32,44:47,50:55,60:61,68:69,72:75,80:83,88:91,96:97,100:103,106:107,114:119,122:125)
+xCols <- c(1,2,xStartIndex: xEndIndex)
+
+# create data frame with just response variable and regressors
+d.subset <- d[,c(yCol,xCols[1:length(xCols)])]
+
+# TODO convert TRUE/FALSE to 1/0 (currently done in excel!)
+
+# rename response variable so that it can be referenced easily
+colnames(d.subset)[1] <- "response"
+
+# TODO: don't blindly replace NA with zero!
+d.subset[is.na(d.subset)] <- 0
+
+
+
+#######
+createSubset <- function(data, wave){
+  d.wave <- subset(d.subset, wave==i)
+
+  # drop columns with low variance
+  # TODO: make sure this step is necessary - would be better if this was dealth with inside the train procedure
+  nzv    <- nearZeroVar(d.wave)
+  # JB: PUT THIS BACK
+   d.wave <- d.wave[, -nzv]
+  # old school version:
+  # d.subset       <- d.subset[sapply(d.subset, function(x) length(unique(x))>1)]
+
+  # hack to remove highly collinear columns
+  # TODO: make sure we want this step
+  # JB: PUT THIS BACK
+#  cmat       <- cor(d.wave)
+#  collinears <- findCorrelation(cmat, cutoff = .95)
+  #d.wave     <- d.wave[,-collinears]
+  return(d.wave)
+}
+
+d.subset.noid <- d.subset[,-2]
+
+for(i in 0:13) {
+  subsetName <- paste("d.wave", i, sep = "")
+  assign(subsetName, createSubset(d.subset.noid,i))
+}
+
+
+######Taking wave 6 as a sample
+# d.wave0
+# d.wave0$response = as.factor(d.wave0$response)
+# d.wave1$response = as.factor(d.wave1$response)
+# d.wave2$response = as.factor(d.wave2$response)
+# d.wave3$response = as.factor(d.wave3$response)
+# d.wave4$response = as.factor(d.wave4$response)
+# d.wave5$response = as.factor(d.wave5$response)
+# d.wave6$response = as.factor(d.wave6$response)
+# d.wave7$response = as.factor(d.wave7$response)
+# d.wave8$response = as.factor(d.wave8$response)
+# d.wave9$response = as.factor(d.wave9$response)
+# d.wave10$response = as.factor(d.wave10$response)
+# d.wave11$response = as.factor(d.wave11$response)
+# d.wave12$response = as.factor(d.wave12$response)
+# d.wave13$response = as.factor(d.wave13$response)
+# index1 = createDataPartition(d.wave$respid , p = 0.8, list = FALSE)
+# train1 = d.wave[index1,]
+# test1 = d.wave[-index1, ]
+temp0 = read.csv("resp_10class_Sep15.csv")
+temp1 = read.csv("resp_10class_Oct15.csv")
+temp2 = read.csv("resp_10class_Nov15.csv")
+temp3 = read.csv("resp_10class_Dec15.csv")
+temp4 = read.csv("resp_10class_Jan16.csv")
+temp5 = read.csv("resp_10class_Feb16.csv")
+temp6 = read.csv("resp_10class_Mar16.csv")
+temp7 = read.csv("resp_10class_Apr16.csv")
+temp8 = read.csv("resp_10class_May16.csv")
+
+
+dpromo0 = merge(d.wave0, temp0, by = "respid")
+dpromo1 = merge(d.wave1, temp1, by = "respid")
+dpromo2 = merge(d.wave2, temp2, by = "respid")
+dpromo3 = merge(d.wave3, temp2, by = "respid")
+dpromo4 = merge(d.wave4, temp3, by = "respid")
+dpromo5 = merge(d.wave5, temp3, by = "respid")
+dpromo6 = merge(d.wave6, temp4, by = "respid")
+dpromo7 = merge(d.wave7, temp4, by = "respid")
+dpromo8 = merge(d.wave8, temp5, by = "respid")
+dpromo9 = merge(d.wave9, temp5, by = "respid")
+dpromo10 = merge(d.wave10, temp6, by = "respid")
+dpromo11 = merge(d.wave11, temp6, by = "respid")
+dpromo12 = merge(d.wave12, temp8, by = "respid")
+dpromo13 = merge(d.wave13, temp8, by = "respid")
+# index2 = createDataPartition(dpromo$respid , p = 0.8, list = FALSE)
+# train2 = dpromo[index2,]
+# test2 = dpromo[-index2, ]
+
+
+
+library(randomForest)
+#####Model training
+
+xgb0 <- train(response ~., data=d.wave0,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+
+xgb1 <- train(response ~., data=d.wave1,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb2 <- train(response ~., data=d.wave2,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb3 <- train(response ~., data=d.wave3,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb4 <- train(response ~., data=d.wave4,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb5 <- train(response ~., data=d.wave5,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb6 <- train(response ~., data=d.wave6,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb7 <- train(response ~., data=d.wave7,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb8 <- train(response ~., data=d.wave8,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb9 <- train(response ~., data=d.wave9,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb10 <- train(response ~., data=d.wave10,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb11 <- train(response ~., data=d.wave11,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb12 <- train(response ~., data=d.wave12,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb13 <- train(response ~., data=d.wave13,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+
+############with promos############
+
+xgb0_p <- train((response) ~., data=dpromo0,method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb1_p <- train((response) ~., data=dpromo1,method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb2_p <- train((response) ~., data=dpromo2,method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb3_p <- train((response) ~., data=dpromo3,method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb4_p <- train((response) ~., data=dpromo4,method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb5_p <- train((response) ~., data=dpromo5,method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb6_p <- train((response) ~., data=dpromo6,method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb7_p <- train((response) ~., data=dpromo7,method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb8_p <- train((response) ~., data=dpromo8,method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb9_p <- train((response) ~., data=dpromo9,method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb10_p <- train((response) ~., data=dpromo10,method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb11_p <- train((response) ~., data=dpromo11,method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb12_p <- train((response) ~., data=dpromo12,method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+xgb13_p <- train((response) ~., data=dpromo13,method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+ 
+
+results <- resamples(list(XGB=xgb1, XGB_promo = xgb0_p ))
+
+results <- resamples(list( XGB=xgb1, XGB_promo = xgb2))
+
+bwplot(results,metric="Accuracy",main=")")
+
+
+
+
+
+
+
+
+```
+
+
+
+
+#### Jake's suggestion - 
+use promotos before the cashdrops start. Split the datasets based on respids. Train and test are 70/30 split. train on data for wave 10-11-12-13 and predict on wave 10-11-12-13. 
+predicting cashdrop
+
+
+```{r}
+library(caret)
+library(ROCR)
+
+promo = read.csv("resp_10class_full_before_cash_drop.csv")
+
+dsub = subset(d, d$wave == 10|d$wave == 11|d$wave == 12|d$wave == 13)
+
+
+cl <- makeCluster(7)
+registerDoParallel(cl)		        # Register parallel backend
+getDoParWorkers()
+
+control <- trainControl(method="repeatedcv", number=5, repeats=1)
+
+
+yColumnName <- 'cash'
+#yColumnName <- 'wealthindex2'
+yCol        <- grep(yColumnName, colnames(dsub))
+dsub           <- dsub[!is.na(dsub[,yColumnName]),]
+y           <- dsub[,yCol]
+
+xStartIndex <- grep('reporting__number_of_records', colnames(dsub))
+xEndIndex   <- grep('churn_rate__std', colnames(dsub))
+xCols <- c(1,2,xStartIndex: xEndIndex)
+
+d.subset <- dsub[,c(yCol,xCols[1:length(xCols)])]
+
+
+colnames(d.subset)[2] <- "response"
+d.subset = d.subset[,-1] 
+
+d.subset[is.na(d.subset)] <- 0
+d.subset$response = as.factor(as.character(d.subset$response))
+
+nzv    <- nearZeroVar(d.subset)
+d.subset <- d.subset[, -nzv]
+
+intrain<-createDataPartition(y=d.subset$respid,p=0.7,list=FALSE)
+train<-d.subset[intrain,]
+test<-d.subset[-intrain,]
+
+dpromo = merge(promo, d.subset, by = "respid" )
+dpromo$response = as.factor(as.character(dpromo$response))
+
+intrainp<-createDataPartition(y=dpromo$respid,p=0.7,list=FALSE)
+train_p<-dpromo[intrainp,]
+test_p<-dpromo[-intrainp,]
+
+head(d.subset[1:10,1:20])
+head(test_p[1:10,1:20])
+##training and predicting 
+
+
+xgb <- train(response ~., data=train,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit, metric = "ROC")
+
+xgbp <- train(response ~., data=train_p,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+
+
+
+
+
+
+
+
+
+
+#######evaluating model
+pred= predict(xgb, test, type = "prob")
+pred=as.numeric(as.character(  predict(xgb, test)))
+test$response=as.numeric(as.character(test$response))
+confMat = table(test$response,pred)
+confMat
+
+pred_promo=predict(xgbp, test_p)
+confMat_promo = table(test_p$response,pred_promo)
+confMat_promo
+
+
+
+
+
+
+#####3Extra Stuff
+
+
+
+#base = prediction(pred, test$response)
+roc.train      <- prediction(pred,test$response)
+auc.train      <- performance(roc.train, 'auc')@y.values[[1]]
+
+
+
+pred <- prediction(pred, test$response)
+perf <- performance(roc.train , measure = "tpr", x.measure = "fpr") 
+plot(perf, col=rainbow(10))
+pred# pred1 = predict(xgb1, test1, class= "prob")
+# pred2 = pred(xgb2, test2, class= "prob")
+# 
+# roc.train      <- prediction(pred1,test1$response)
+# auc.train      <- performance(roc.train, 'auc')@y.values[[1]]
+
+######trying to plot ROC######################################################
+
+xgb.pred <- predict(xgb,test)
+ 
+#Look at the confusion matrix  
+confusionMatrix(xgb.pred,test$response)   
+ 
+#Draw the ROC curve 
+xgb.probs <- predict(xgb,test,type="prob")
+#head(xgb.probs)
+ 
+xgb.ROC <- roc(predictor=xgb.probs$`0`,
+               response=test$response,
+               levels=rev(levels(test$response)))
+xgb.ROC$auc
+# Area under the curve: 0.8857
+ 
+plot(xgb.ROC,main="xgboost ROC")
+# Plot the propability of poor segmentation
+#histogram(~xgb.probs$`0`|test$response,xlab="Probability of Poor Segmentation")
+ 
+
+
+
+
+
+
+
+
+######Verified Stuff
+results <- resamples(list( XGB_base=xgb, XGB_promo = xgbp))
+
+bwplot(results,metric="Accuracy",main=")")
+
+```
+
+
+##Figure for Josh/Jake
+```{r}
+
+
+
+
+
+
+```
+
+
+
+
+```{r}
+plot_pred_type_distribution <- function(df, threshold) {
+  v <- rep(NA, nrow(test))
+  v <- ifelse(df$pred >= threshold & df$survived == 1, "TP", v)
+  v <- ifelse(df$pred >= threshold & df$survived == 0, "FP", v)
+  v <- ifelse(df$pred < threshold & df$survived == 1, "FN", v)
+  v <- ifelse(df$pred < threshold & df$survived == 0, "TN", v)
+  
+  df$pred_type <- v
+  
+  ggplot(data=df, aes(x=survived, y=pred)) + 
+    geom_violin(fill=rgb(1,1,1,alpha=0.6), color=NA) + 
+    geom_jitter(aes(color=pred_type), alpha=0.6) +
+    geom_hline(yintercept=threshold, color="red", alpha=0.6) +
+    scale_color_discrete(name = "type") +
+    labs(title=sprintf("Threshold at %.2f", threshold))
+}
+```
+
