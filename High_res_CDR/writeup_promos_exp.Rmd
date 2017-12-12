@@ -1,0 +1,568 @@
+---
+title: "Promotion_exp_writeup"
+author: "Manu"
+date: "December 8, 2017"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, cache = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r}
+library(caret)
+library(ROCR)
+
+library(ggplot2)
+library(gbm,enet)
+
+library(mlbench)
+library(caret)
+library(pROC)
+
+library(haven)
+
+library(robustHD)
+library(xgboost)
+library(doParallel)
+
+setwd("C:/Users/ms52/Dropbox (ESOC - Princeton)/High-Rez Indicators/Analysis/Promotions")
+
+bandi =read.csv( "C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Roshan\\highrez_sample\\bandicoot\\HRDI_bandicoot_indicators_full-56days.csv")
+
+promo = read.csv("resp_10class_full_before_cash_drop.csv")
+
+survey     <- read_dta("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Sayara\\alldata_clean\\highRez_allrounds_long_clean.dta")
+colnames(bandi)[1] = "respid"
+d <- merge(bandi, survey, by = c("respid","wave"))
+
+
+```
+
+##Model Spefification
+
+![](C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Promotions\\timeline_final.png)
+
+
+
+
+
+
+
+
+##Cashdrop -Model XGB
+
+Confusion Matrix for cashdrop without promotion information
+```{r}
+
+
+
+promo = read.csv("resp_10class_full_before_cash_drop.csv")
+
+survey     <- read_dta("C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Sayara\\alldata_clean\\highRez_allrounds_long_clean.dta")
+colnames(bandi)[1] = "respid"
+d <- merge(bandi, survey, by = c("respid","wave"))
+
+
+dsub = subset(d, d$wave == 10|d$wave == 11|d$wave == 12|d$wave == 13)
+
+
+cl <- makeCluster(7)
+registerDoParallel(cl)		        # Register parallel backend
+# getDoParWorkers()
+
+control <- trainControl(method="repeatedcv", number=5, repeats=1)
+
+
+yColumnName <- 'cash'
+yCol        <- grep(yColumnName, colnames(dsub))
+dsub           <- dsub[!is.na(dsub[,yColumnName]),]
+y           <- dsub[,yCol]
+
+xStartIndex <- grep('reporting__number_of_records', colnames(dsub))
+xEndIndex   <- grep('churn_rate__std', colnames(dsub))
+xCols <- c(1,2,xStartIndex: xEndIndex)
+
+d.subset <- dsub[,c(yCol,xCols[1:length(xCols)])]
+
+# head(d.subset[1:10,1:20])
+colnames(d.subset)[2] <- "response"
+d.subset = d.subset[,-1] 
+
+d.subset[is.na(d.subset)] <- 0
+d.subset$response = as.factor(as.character(d.subset$response))
+
+nzv    <- nearZeroVar(d.subset)
+d.subset <- d.subset[, -nzv]
+
+n = round(length(unique(d.subset$respid))*.7)
+ids <- sample(unique(d.subset$respid), n)
+
+train<-d.subset[d.subset$respid %in% ids,]
+test<-d.subset[!(d.subset$respid %in% ids),]
+
+# dim(test)
+# dim(train)
+
+dpromo = merge(promo, d.subset, by = "respid" )
+dpromo$response = as.factor(as.character(dpromo$response))
+n1 = round(length(unique(dpromo$respid))*.7)
+ids1 <- sample(unique(dpromo$respid), n1)
+
+
+train_p<-dpromo[dpromo$respid %in% ids1,]
+test_p<-dpromo[!(dpromo$respid %in% ids1),]
+
+# head(d.subset[1:10,1:20])
+# head(test_p[1:10,1:20])
+
+xgbGrid <- expand.grid(nrounds = 500, #the maximum number of iterations
+                        eta = c(0.01,0.1), # shrinkage
+                        max_depth = c(2,6,10))
+
+
+
+xgb <- train(response ~., data=train,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+
+xgbp <- train(response ~., data=train_p,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+
+#######evaluating model
+# pred= predict(xgb, test, type = "prob")
+# pred=as.numeric(as.character(  predict(xgb, test)))
+# test$response=as.numeric(as.character(test$response))
+# confMat = table(test$response,pred)
+# confMat
+# 
+# pred_promo=predict(xgbp, test_p)
+# confMat_promo = table(test_p$response,pred_promo)
+# confMat_promo
+# 
+# 
+# #####3Extra Stuff
+# 
+# 
+# 
+# #base = prediction(pred, test$response)
+# roc.train      <- prediction(pred,test$response)
+# auc.train      <- performance(roc.train, 'auc')@y.values[[1]]
+# 
+# 
+# 
+# pred <- prediction(pred, test$response)
+# perf <- performance(roc.train , measure = "tpr", x.measure = "fpr") 
+# plot(perf, col=rainbow(10))
+# pred# pred1 = predict(xgb1, test1, class= "prob")
+# # pred2 = pred(xgb2, test2, class= "prob")
+# # 
+# # roc.train      <- prediction(pred1,test1$response)
+# # auc.train      <- performance(roc.train, 'auc')@y.values[[1]]
+
+######trying to plot ROC######################################################
+
+xgb.pred <- predict(xgb,test)
+ 
+#Look at the confusion matrix  
+confusionMatrix(xgb.pred,test$response)  
+#Draw the ROC curve 
+xgb.probs <- predict(xgb,test,type="prob")
+#head(xgb.probs)
+ 
+xgb.ROC <- roc(predictor=xgb.probs$`0`,
+               response=test$response)
+xgb.ROC$auc
+
+```
+
+
+Confusion Matrix for cashdrop with promotion information
+
+
+```{r}
+ 
+
+# Area under the curve: 0.7384
+ 
+# plot(xgb.ROC,main="xgboost ROC")
+# Plot the propability of poor segmentation
+#histogram(~xgb.probs$`0`|test$response,xlab="Probability of Poor Segmentation")
+#--------------------------------------------------------------------------
+ xgb.pred1 <- predict(xgbp,test_p)
+ 
+#Look at the confusion matrix  
+confusionMatrix(xgb.pred1,test_p$response)   
+ 
+#Draw the ROC curve 
+xgb.probs1 <- predict(xgbp,test_p,type="prob")
+#head(xgb.probs)
+ 
+xgbp.ROC <- roc(predictor=xgb.probs1$`0`,
+               response=test_p$response)
+xgbp.ROC$auc
+# Area under the curve: 0.7825
+# plot( xgbp.ROC, main="xgboost ROC")
+
+a = plot(xgb.ROC,main="ROC for base model and promotions", col = "blue", print.auc = TRUE, print.auc.y = .75)
+a = plot(xgbp.ROC,main="ROC for base model and promotions", col = "red", add = TRUE,  print.auc = TRUE, print.auc.y = .95) 
+legend(1.2,0.8, c("XGB_with Promotions","XGB_Base model"), lty=c(1,1), lwd=c(2.5,2.5),col=c("red","blue")) 
+
+
+
+
+
+
+
+
+
+####################################################################################
+
+
+
+
+
+######Verified Stuff
+# results <- resamples(list( XGB_base=xgb, XGB_promo = xgbp))
+# 
+# bwplot(results,metric="Accuracy",main=")")
+
+```
+
+
+
+## Illness in the family - Model GBM
+
+Confusion Matrix for illness without promotion information
+```{r}
+
+dsub = subset(d, d$wave == 10|d$wave == 11|d$wave == 12|d$wave == 13)
+
+cl <- makeCluster(7)
+registerDoParallel(cl)		        # Register parallel backend
+# getDoParWorkers()
+
+control <- trainControl(method="repeatedcv", number=5, repeats=1)
+
+
+yColumnName <- 'Q10_01_O'
+yCol        <- grep(yColumnName, colnames(dsub))
+dsub           <- dsub[!is.na(dsub[,yColumnName]),]
+y           <- dsub[,yCol]
+
+xStartIndex <- grep('reporting__number_of_records', colnames(dsub))
+xEndIndex   <- grep('churn_rate__std', colnames(dsub))
+xCols <- c(1,2,xStartIndex: xEndIndex)
+
+d.subset <- dsub[,c(yCol,xCols[1:length(xCols)])]
+
+
+colnames(d.subset)[1] <- "response"
+#d.subset = d.subset[,-1] 
+
+d.subset[is.na(d.subset)] <- 0
+d.subset$response = as.factor(as.character(d.subset$response))
+
+nzv    <- nearZeroVar(d.subset)
+d.subset <- d.subset[, -nzv]
+
+n = round(length(unique(d.subset$respid))*.7)
+ids <- sample(unique(d.subset$respid), n)
+
+train<-d.subset[d.subset$respid %in% ids,]
+test<-d.subset[!(d.subset$respid %in% ids),]
+
+# dim(test)
+# dim(train)
+
+dpromo = merge(promo, d.subset, by = "respid" )
+dpromo$response = as.factor(as.character(dpromo$response))
+n1 = round(length(unique(dpromo$respid))*.7)
+ids1 <- sample(unique(dpromo$respid), n1)
+
+
+train_p<-dpromo[dpromo$respid %in% ids1,]
+test_p<-dpromo[!(dpromo$respid %in% ids1),]
+
+# head(d.subset[1:10,1:20])
+# head(test_p[1:10,1:20])
+
+cl <- makeCluster(7)
+registerDoParallel(cl)		        # Register parallel backend
+# getDoParWorkers()
+
+gbmGrid <-  expand.grid(interaction.depth = c(1,2,3,6,9), 
+                        n.trees = c(25,50,100,150,500),
+                        shrinkage = 0.05,   # TODO: tinker (lower) this
+                        n.minobsinnode = 5) # TODO: tinker (lower) this
+
+
+xgb <- train(response ~., data=train,
+                  method="gbm", trControl=control, verbose=FALSE, na.action=na.omit,
+                  tuneGrid = gbmGrid)
+
+xgbp <- train(response ~., data=train_p,
+                  method="gbm", trControl=control, verbose=FALSE, na.action=na.omit,
+                  tuneGrid = gbmGrid)
+
+
+xgb.pred <- predict(xgb,test)
+ 
+#Look at the confusion matrix  
+confusionMatrix(xgb.pred,test$response)   
+ 
+#Draw the ROC curve 
+xgb.probs <- predict(xgb,test,type="prob")
+#head(xgb.probs)
+ 
+xgb.ROC <- roc(predictor=xgb.probs$`0`,
+               response=test$response)
+xgb.ROC$auc
+
+```
+
+Confusion Matrix for illness with promotion information
+
+```{r}
+# Area under the curve: 0.7384
+ 
+#plot(xgb.ROC,main="xgboost ROC")
+# Plot the propability of poor segmentation
+#histogram(~xgb.probs$`0`|test$response,xlab="Probability of Poor Segmentation")
+#--------------------------------------------------------------------------
+ xgb.pred1 <- predict(xgbp,test_p)
+ 
+#Look at the confusion matrix  
+confusionMatrix(xgb.pred1,test_p$response)   
+ 
+#Draw the ROC curve 
+xgb.probs1 <- predict(xgbp,test_p,type="prob")
+#head(xgb.probs)
+ 
+xgbp.ROC <- roc(predictor=xgb.probs1$`0`,
+               response=test_p$response)
+#xgbp.ROC$auc
+# Area under the curve: 0.7825
+# plot( xgbp.ROC, main="xgboost ROC")
+
+a = plot(xgb.ROC,main="ROC for base model and promotions", col = "blue", print.auc = TRUE, print.auc.y = .75)
+a = plot(xgbp.ROC,main="ROC for base model and promotions", col = "red", add = TRUE,  print.auc = TRUE, print.auc.y = .95) 
+legend(1.2,0.8, c("XGB_with Promotions","XGB_Base model"), lty=c(1,1), lwd=c(2.5,2.5),col=c("red","blue")) 
+
+
+
+
+```
+
+
+## Rise in food prices- Model XGB
+
+Confusion Matrix for rising food prices without promotion information
+
+```{r}
+
+
+cl <- makeCluster(7)
+registerDoParallel(cl)		        # Register parallel backend
+# getDoParWorkers()
+
+control <- trainControl(method="repeatedcv", number=5, repeats=1)
+
+
+yColumnName <- 'Q10_01_M'
+yCol        <- grep(yColumnName, colnames(dsub))
+dsub           <- dsub[!is.na(dsub[,yColumnName]),]
+y           <- dsub[,yCol]
+
+xStartIndex <- grep('reporting__number_of_records', colnames(dsub))
+xEndIndex   <- grep('churn_rate__std', colnames(dsub))
+xCols <- c(1,2,xStartIndex: xEndIndex)
+
+d.subset <- dsub[,c(yCol,xCols[1:length(xCols)])]
+
+
+colnames(d.subset)[1] <- "response"
+#d.subset = d.subset[,-1] 
+
+d.subset[is.na(d.subset)] <- 0
+d.subset$response = as.factor(as.character(d.subset$response))
+
+nzv    <- nearZeroVar(d.subset)
+d.subset <- d.subset[, -nzv]
+
+n = round(length(unique(d.subset$respid))*.7)
+ids <- sample(unique(d.subset$respid), n)
+
+train<-d.subset[d.subset$respid %in% ids,]
+test<-d.subset[!(d.subset$respid %in% ids),]
+
+# dim(test)
+# dim(train)
+
+dpromo = merge(promo, d.subset, by = "respid" )
+dpromo$response = as.factor(as.character(dpromo$response))
+n1 = round(length(unique(dpromo$respid))*.7)
+ids1 <- sample(unique(dpromo$respid), n1)
+
+
+train_p<-dpromo[dpromo$respid %in% ids1,]
+test_p<-dpromo[!(dpromo$respid %in% ids1),]
+
+# head(d.subset[1:10,1:20])
+# head(test_p[1:10,1:20])
+
+
+
+xgb <- train(response ~., data=train,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+
+xgbp <- train(response ~., data=train_p,
+                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+
+#######evaluating model
+# pred= predict(xgb, test, type = "prob")
+# pred=as.numeric(as.character(  predict(xgb, test)))
+# test$response=as.numeric(as.character(test$response))
+# confMat = table(test$response,pred)
+# confMat
+# 
+# pred_promo=predict(xgbp, test_p)
+# confMat_promo = table(test_p$response,pred_promo)
+# confMat_promo
+# 
+# 
+# #####3Extra Stuff
+# 
+# 
+# 
+# #base = prediction(pred, test$response)
+# roc.train      <- prediction(pred,test$response)
+# auc.train      <- performance(roc.train, 'auc')@y.values[[1]]
+# 
+# 
+# 
+# pred <- prediction(pred, test$response)
+# perf <- performance(roc.train , measure = "tpr", x.measure = "fpr") 
+# plot(perf, col=rainbow(10))
+# pred# pred1 = predict(xgb1, test1, class= "prob")
+# # pred2 = pred(xgb2, test2, class= "prob")
+# # 
+# # roc.train      <- prediction(pred1,test1$response)
+# # auc.train      <- performance(roc.train, 'auc')@y.values[[1]]
+
+######trying to plot ROC######################################################
+
+xgb.pred <- predict(xgb,test)
+ 
+#Look at the confusion matrix  
+confusionMatrix(xgb.pred,test$response)   
+ 
+#Draw the ROC curve 
+xgb.probs <- predict(xgb,test,type="prob")
+#head(xgb.probs)
+ 
+xgb.ROC <- roc(predictor=xgb.probs$`0`,
+               response=test$response)
+xgb.ROC$auc
+# Area under the curve: 0.7384
+ 
+#plot(xgb.ROC,main="xgboost ROC")
+# Plot the propability of poor segmentation
+#histogram(~xgb.probs$`0`|test$response,xlab="Probability of Poor Segmentation")
+
+```
+
+Confusion Matrix for rising food prices with promotion information
+
+```{r}
+#--------------------------------------------------------------------------
+ xgb.pred1 <- predict(xgbp,test_p)
+ 
+#Look at the confusion matrix  
+confusionMatrix(xgb.pred1,test_p$response)   
+ 
+#Draw the ROC curve 
+xgb.probs1 <- predict(xgbp,test_p,type="prob")
+#head(xgb.probs)
+ 
+xgbp.ROC <- roc(predictor=xgb.probs1$`0`,
+               response=test_p$response)
+xgbp.ROC$auc
+# Area under the curve: 0.7825
+#plot( xgbp.ROC, main="xgboost ROC")
+
+a = plot(xgb.ROC,main="ROC for base model and promotions", col = "blue", print.auc = TRUE, print.auc.y = .75)
+a = plot(xgbp.ROC,main="ROC for base model and promotions", col = "red", add = TRUE,  print.auc = TRUE, print.auc.y = .95) 
+legend(1.2,0.8, c("XGB_with Promotions","XGB_Base model"), lty=c(1,1), lwd=c(2.5,2.5),col=c("red","blue")) 
+
+
+
+
+
+
+```
+
+
+##Additonal Information about promotional clusters - 
+
+Steps followed in creating the clusters are- 
+
+#### 1.	Creating n-grams
+          a.	Using SUBCOSID+PRODUCTID pairs create 2-grams for all the users. Its notable that users go through a lot of plans changes.
+          b.	The top 10 SUBCOSID+PRODID ngrams for every user (capturing about +90% of their calling history) is subsetted. There are about 600 different combinations
+          c.	The data is reshaped into a 1200*600 matrix where the first col is respID and a binary variable indicates if respondent is a part of SUBCOSID+PRODID ngam. Snapshot below:
+          
+![](C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Promotions\\c3.png)
+
+####  2.	Creating clusters of users
+          a.	Using K means I created clusters on the matrix above to identify groups of people.
+          b.	Number of clusters are decided using bootstrap to minimize gap statistic and within cluster               sum of sqs. (Beyond 10 there seems to be little gain and 5 groups were too few)
+
+
+![](C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Promotions\\c1.png)
+
+![](C:\\Users\\ms52\\Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Analysis\\Promotions\\c2.png)
+
+
+##Additonal Information to replicate the experiment down the line - 
+
+With reference to figure 1 in  this document, a few additional details which can allow the results above to be replicated are: 
+
+1. The CDR features used here are - **HRDI_bandicoot_indicators_full-56days** which can be accessed from - ~ (ESOC - Princeton)\\High-Rez Indicators\\Data//Roshan\\highrez_sample\\bandicoot
+
+2. The survey information is drawn from **highRez_allrounds_long_clean** , which can be accessed from ~Dropbox (ESOC - Princeton)\\High-Rez Indicators\\Data\\Sayara\\alldata_clean
+
+3. For grouping of individuals as per their promotional data, I have only used information upto the point of cashdrops. 
+
+4. The training and testing of the model happens over the last 4 waves i.e 10, 11, 12, and 13.Its important to note here that I am not training over wave T and predicting over wave T+1. But training and testing over the entire duration of waves 10 to 13. 
+
+5. The splitting of training and testing is done by respondent ID. Thus the data is trained over approximately 740 individuals and the predictions are made for the rest 320 individuals. (Some individuals who made less than 2 phone calls in the waves 0-9 are dropped because n grams could not be generated, this is a small number)
+
+6. Model specification and tuning parameters - I tried using `xgbTree` and `gbm` from the caret package. The details and parameters are - (attempting to keep the model as similar as possible to Niall's code)
+
+```R
+#for xbgTree
+xgbGrid <- expand.grid(nrounds = 500, eta = c(0.01,0.1), max_depth = c(2,6,10),   gamma = 0, colsample_bytree = 1, min_child_weight = 1)
+
+xgb <- train(response ~., data=test,
+                    method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit,
+                    tuneGrid = xgbGrid)
+
+```
+
+
+```R
+#for GBM
+gbmGrid <-  expand.grid(interaction.depth = c(1,2,3,6,9), 
+                        n.trees = c(25,50,100,150,500),
+                        shrinkage = 0.05,   
+                        n.minobsinnode = 5) 
+
+gbm <- train(response ~., data=test,
+                  method="gbm", trControl=control, verbose=FALSE, na.action=na.omit,
+                  tuneGrid = gbmGrid)
+
+```
+
