@@ -74,7 +74,7 @@ cl <- makeCluster(7)
 registerDoParallel(cl)		        # Register parallel backend
 # getDoParWorkers()
 
-control <- trainControl(method="repeatedcv", number=5, repeats=1)
+control <- trainControl(method="repeatedcv", number=5, repeats=1, allowParallel = TRUE)
 
 
 yColumnName <- 'cash'
@@ -119,17 +119,29 @@ test_p<-dpromo[!(dpromo$respid %in% ids1),]
 # head(d.subset[1:10,1:20])
 # head(test_p[1:10,1:20])
 
-xgbGrid <- expand.grid(nrounds = 500, #the maximum number of iterations
-                        eta = c(0.01,0.1), # shrinkage
-                        max_depth = c(2,6,10))
 
+model_weights <- ifelse(train$response == 1,
+                        (1/table(train$response)[2]) * 0.5,
+                        (1/table(train$response)[1]) * 0.5)
+
+
+gbmGrid <-  expand.grid(interaction.depth = c(1,2,3,6,9), 
+                        n.trees = c(75),
+                        shrinkage = 0.05,   # TODO: tinker (lower) this
+                        n.minobsinnode = 5) # TODO: tinker (lower) this
 
 
 xgb <- train(response ~., data=train,
-                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+                  method="gbm", trControl=control, verbose=FALSE, na.action=na.omit,
+                  tuneGrid = gbmGrid, weights = model_weights)
+
+model_weights <- ifelse(train_p$response == 1,
+                        (1/table(train_p$response)[2]) * 0.5,
+                        (1/table(train_p$response)[1]) * 0.5)
 
 xgbp <- train(response ~., data=train_p,
-                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+                  method="gbm", trControl=control, verbose=FALSE, na.action=na.omit,
+                  tuneGrid = gbmGrid, weights = model_weights)
 
 #######evaluating model
 # pred= predict(xgb, test, type = "prob")
@@ -244,7 +256,7 @@ cl <- makeCluster(7)
 registerDoParallel(cl)		        # Register parallel backend
 # getDoParWorkers()
 
-control <- trainControl(method="repeatedcv", number=5, repeats=1)
+control <- trainControl(method="repeatedcv", number=5, repeats=1, allowParallel = TRUE)
 
 
 yColumnName <- 'Q10_01_O'
@@ -293,19 +305,30 @@ cl <- makeCluster(7)
 registerDoParallel(cl)		        # Register parallel backend
 # getDoParWorkers()
 
+
+
+model_weights <- ifelse(train$response == 1,
+                        (1/table(train$response)[2]) * 0.6,
+                        (1/table(train$response)[1]) * 0.4)
+
+
 gbmGrid <-  expand.grid(interaction.depth = c(1,2,3,6,9), 
-                        n.trees = c(25,50,100,150,500),
+                        n.trees = c(75),
                         shrinkage = 0.05,   # TODO: tinker (lower) this
                         n.minobsinnode = 5) # TODO: tinker (lower) this
 
 
 xgb <- train(response ~., data=train,
                   method="gbm", trControl=control, verbose=FALSE, na.action=na.omit,
-                  tuneGrid = gbmGrid)
+                  tuneGrid = gbmGrid, weights = model_weights)
+
+model_weights <- ifelse(train_p$response == 1,
+                        (1/table(train_p$response)[2]) * 0.7,
+                        (1/table(train_p$response)[1]) * 0.3)
 
 xgbp <- train(response ~., data=train_p,
                   method="gbm", trControl=control, verbose=FALSE, na.action=na.omit,
-                  tuneGrid = gbmGrid)
+                  tuneGrid = gbmGrid, weights = model_weights)
 
 
 xgb.pred <- predict(xgb,test)
@@ -368,7 +391,7 @@ cl <- makeCluster(7)
 registerDoParallel(cl)		        # Register parallel backend
 # getDoParWorkers()
 
-control <- trainControl(method="repeatedcv", number=5, repeats=1)
+control <- trainControl(method="repeatedcv", number=5, repeats=1, allowParallel = TRUE)
 
 
 yColumnName <- 'Q10_01_M'
@@ -414,12 +437,28 @@ test_p<-dpromo[!(dpromo$respid %in% ids1),]
 # head(test_p[1:10,1:20])
 
 
+model_weights <- ifelse(train$response == 1,
+                        (1/table(train$response)[2]) * 0.6,
+                        (1/table(train$response)[1]) * 0.4)
+
+
+gbmGrid <-  expand.grid(interaction.depth = c(1,2,3,6,9), 
+                        n.trees = c(75),
+                        shrinkage = 0.05,   # TODO: tinker (lower) this
+                        n.minobsinnode = 5) # TODO: tinker (lower) this
+
 
 xgb <- train(response ~., data=train,
-                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+                  method="gbm", trControl=control, verbose=FALSE, na.action=na.omit,
+                  tuneGrid = gbmGrid, weights = model_weights)
+
+model_weights <- ifelse(train_p$response == 1,
+                        (1/table(train_p$response)[2]) * 0.7,
+                        (1/table(train_p$response)[1]) * 0.3)
 
 xgbp <- train(response ~., data=train_p,
-                  method="xgbTree", trControl=control, verbose=FALSE, na.action=na.omit)
+                  method="gbm", trControl=control, verbose=FALSE, na.action=na.omit,
+                  tuneGrid = gbmGrid, weights = model_weights)
 
 #######evaluating model
 # pred= predict(xgb, test, type = "prob")
@@ -505,6 +544,228 @@ legend(1.2,0.8, c("XGB_with Promotions","XGB_Base model"), lty=c(1,1), lwd=c(2.5
 ```
 
 
+
+
+## Births and Celebration combined- Model GBM
+
+Confusion Matrix for rising food prices without promotion information
+
+```{r}
+
+
+cl <- makeCluster(7)
+registerDoParallel(cl)		        # Register parallel backend
+# getDoParWorkers()
+
+control <- trainControl(method="repeatedcv", number=5, repeats=1, allowParallel = TRUE, sampling = "up")
+
+dsub$b_cele = dsub$Q10_01_P + dsub$Q10_01_C
+dsub$b_cele = ifelse(dsub$b_cele == 2, 1, dsub$b_cele)
+
+yColumnName <- 'b_cele'
+yCol        <- grep(yColumnName, colnames(dsub))
+dsub           <- dsub[!is.na(dsub[,yColumnName]),]
+y           <- dsub[,yCol]
+
+xStartIndex <- grep('reporting__number_of_records', colnames(dsub))
+xEndIndex   <- grep('churn_rate__std', colnames(dsub))
+xCols <- c(1,2,xStartIndex: xEndIndex)
+
+d.subset <- dsub[,c(yCol,xCols[1:length(xCols)])]
+
+
+colnames(d.subset)[1] <- "response"
+#d.subset = d.subset[,-1] 
+
+d.subset[is.na(d.subset)] <- 0
+d.subset$response = as.factor(as.character(d.subset$response))
+
+nzv    <- nearZeroVar(d.subset)
+nzv = nzv[-1]
+d.subset <- d.subset[, -nzv]
+
+n = round(length(unique(d.subset$respid))*.7)
+ids <- sample(unique(d.subset$respid), n)
+
+train<-d.subset[d.subset$respid %in% ids,]
+test<-d.subset[!(d.subset$respid %in% ids),]
+
+# dim(test)
+# dim(train)
+
+dpromo = merge(promo, d.subset, by = "respid" )
+dpromo$response = as.factor(as.character(dpromo$response))
+n1 = round(length(unique(dpromo$respid))*.7)
+ids1 <- sample(unique(dpromo$respid), n1)
+
+
+train_p<-dpromo[dpromo$respid %in% ids1,]
+test_p<-dpromo[!(dpromo$respid %in% ids1),]
+
+# head(d.subset[1:10,1:20])
+# head(test_p[1:10,1:20])
+
+
+model_weights <- ifelse(train$response == 1,
+                        (1/table(train$response)[2]) * 0.8,
+                        (1/table(train$response)[1]) * 0.2)
+
+
+gbmGrid <-  expand.grid(interaction.depth = c(1,2,3,6,9), 
+                        n.trees = c(75),
+                        shrinkage = 0.05,   # TODO: tinker (lower) this
+                        n.minobsinnode = 5) # TODO: tinker (lower) this
+
+
+xgb <- train(response ~., data=train,
+                  method="gbm", trControl=control, verbose=FALSE, na.action=na.omit,
+                  tuneGrid = gbmGrid)
+
+model_weights <- ifelse(train_p$response == 1,
+                        (1/table(train_p$response)[2]) * 0.8,
+                        (1/table(train_p$response)[1]) * 0.2)
+
+xgbp <- train(response ~., data=train_p,
+                  method="gbm", trControl=control, verbose=FALSE, na.action=na.omit,
+                  tuneGrid = gbmGrid, weights = model_weights)
+
+#######evaluating model
+# pred= predict(xgb, test, type = "prob")
+# pred=as.numeric(as.character(  predict(xgb, test)))
+# test$response=as.numeric(as.character(test$response))
+# confMat = table(test$response,pred)
+# confMat
+# 
+# pred_promo=predict(xgbp, test_p)
+# confMat_promo = table(test_p$response,pred_promo)
+# confMat_promo
+# 
+# 
+# #####3Extra Stuff
+# 
+# 
+# 
+# #base = prediction(pred, test$response)
+# roc.train      <- prediction(pred,test$response)
+# auc.train      <- performance(roc.train, 'auc')@y.values[[1]]
+# 
+# 
+# 
+# pred <- prediction(pred, test$response)
+# perf <- performance(roc.train , measure = "tpr", x.measure = "fpr") 
+# plot(perf, col=rainbow(10))
+# pred# pred1 = predict(xgb1, test1, class= "prob")
+# # pred2 = pred(xgb2, test2, class= "prob")
+# # 
+# # roc.train      <- prediction(pred1,test1$response)
+# # auc.train      <- performance(roc.train, 'auc')@y.values[[1]]
+
+######trying to plot ROC######################################################
+
+xgb.pred <- predict(xgb,test)
+ 
+#Look at the confusion matrix  
+confusionMatrix(xgb.pred,test$response)   
+ 
+#Draw the ROC curve 
+xgb.probs <- predict(xgb,test,type="prob")
+#head(xgb.probs)
+ 
+xgb.ROC <- roc(predictor=xgb.probs$`0`,
+               response=test$response)
+xgb.ROC$auc
+# Area under the curve: 0.7384
+ 
+#plot(xgb.ROC,main="xgboost ROC")
+# Plot the propability of poor segmentation
+#histogram(~xgb.probs$`0`|test$response,xlab="Probability of Poor Segmentation")
+
+```
+
+Confusion Matrix for rising food prices with promotion information
+
+```{r}
+#--------------------------------------------------------------------------
+ xgb.pred1 <- predict(xgbp,test_p)
+ 
+#Look at the confusion matrix  
+confusionMatrix(xgb.pred1,test_p$response)   
+ 
+#Draw the ROC curve 
+xgb.probs1 <- predict(xgbp,test_p,type="prob")
+#head(xgb.probs)
+ 
+xgbp.ROC <- roc(predictor=xgb.probs1$`0`,
+               response=test_p$response)
+xgbp.ROC$auc
+# Area under the curve: 0.7825
+#plot( xgbp.ROC, main="xgboost ROC")
+
+a = plot(xgb.ROC,main="ROC for base model and promotions", col = "blue", print.auc = TRUE, print.auc.y = .75)
+a = plot(xgbp.ROC,main="ROC for base model and promotions", col = "red", add = TRUE,  print.auc = TRUE, print.auc.y = .95) 
+legend(1.2,0.8, c("XGB_with Promotions","XGB_Base model"), lty=c(1,1), lwd=c(2.5,2.5),col=c("red","blue")) 
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ##Additonal Information about promotional clusters - 
 
 Steps followed in creating the clusters are- 
@@ -566,3 +827,18 @@ gbm <- train(response ~., data=test,
 
 ```
 
+
+```{r}
+
+# tunegrid <- expand.grid(.mtry=c(sqrt(ncol(train))))
+# control <- trainControl(method="repeatedcv", number=5, repeats=1, search="grid", allowParallel = TRUE)
+# 
+# xgb <- train(response ~., data=train,
+#                  method="rf",na.action=na.omit , tuneGrid=tunegrid, trControl=control, ntree=5, weights = model_weights)
+# 
+# xgbp <- train(response ~., data=train_p,
+#                   method="rf",na.action=na.omit , tuneGrid=tunegrid, trControl=control, ntree=5)
+
+
+
+```
