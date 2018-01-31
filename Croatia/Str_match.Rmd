@@ -1,0 +1,101 @@
+```{r}
+library(gsubfn)
+setwd("C:/Users/ms52/Dropbox (ESOC - Princeton)/ESOC temp folders-MS/Dejan Project/Parliment 2015 and 2016/Parlamentarni izbori 2016 - rezultati po BM")
+
+ori = read.csv("2015_matching.csv")
+
+ori$add_clean = as.character(ori$add_cle)
+
+
+require(gdata)
+#df = read.xls ("myfile.xlsx"), sheet = 1, header = TRUE)
+
+d = read.delim2("2016_ matches_encoded.txt", fileEncoding="UTF-16")
+
+unwanted_array = list(    'Š'='S', 'š'='s', 'Ž'='Z', 'ž'='z', 'À'='A', 'Á'='A', 'Â'='A', 'Ã'='A', 'Ä'='A', 'Å'='A', 'Æ'='A', 'Ç'='C', 'È'='E', 'É'='E',
+                            'Ê'='E', 'Ë'='E', 'Ì'='I', 'Í'='I', 'Î'='I', 'Ï'='I', 'Ñ'='N', 'Ò'='O', 'Ó'='O', 'Ô'='O', 'Õ'='O', 'Ö'='O', 'Ø'='O', 'Ù'='U',
+                            'Ú'='U', 'Û'='U', 'Ü'='U', 'Ý'='Y', 'Þ'='B', 'ß'='Ss', 'à'='a', 'á'='a', 'â'='a', 'ã'='a', 'ä'='a', 'å'='a', 'æ'='a', 'ç'='c',
+                            'è'='e', 'é'='e', 'ê'='e', 'ë'='e', 'ì'='i', 'í'='i', 'î'='i', 'ï'='i', 'ð'='o', 'ñ'='n', 'ò'='o', 'ó'='o', 'ô'='o', 'õ'='o',
+                            'ö'='o', 'ø'='o', 'ù'='u', 'ú'='u', 'û'='u', 'ý'='y', 'ý'='y', 'þ'='b', 'ÿ'='y', 'Ð' = 'D', 'Š' = 'S' )
+
+
+d$city = as.character(d$city)
+d$Address = as.character(d$Address)
+
+d$city = gsubfn(paste(names(unwanted_array),collapse='|'), unwanted_array,d$city)
+d$Address = gsubfn(paste(names(unwanted_array),collapse='|'), unwanted_array,d$Address)
+
+
+d$full = paste(d$Address, d$city, sep = ", ")
+
+colnames(ori)[3] = "full"
+
+```
+
+
+
+## First pass with exact string matching 
+
+
+```{r}
+
+
+test = merge(d, ori, by = "full" )
+
+
+
+
+```
+
+###Fuzzy string matching  - 
+
+```{r}
+
+ori1 = ori[1:10,]
+d1= d[1:6574 ,]
+
+library(stringdist)
+ 
+distance.methods<-c('osa','lv','dl','hamming','lcs','qgram','cosine','jaccard','jw')
+#distance.methods<-c('qgram')
+dist.methods<-list()
+
+for(m in 1:length(distance.methods))
+{
+  dist.name.enh<-matrix(NA, ncol = length(d1$full),nrow = length(ori1$full))
+  for(i in 1:length(d1$full)) {
+    for(j in 1:length(ori1$full)) { 
+      dist.name.enh[j,i]<-stringdist(tolower(d1[i,]$full),tolower(ori1[j,]$full),method = distance.methods[m])      
+        #adist.enhance(source2.devices[i,]$name,source1.devices[j,]$name)
+    }  
+  }
+  dist.methods[[distance.methods[m]]]<-dist.name.enh
+}
+
+
+###### using the matrix#####
+
+
+match.s1.s2.enh<-NULL
+for(m in 1:length(dist.methods))
+{
+ 
+  dist.matrix<-as.matrix(dist.methods[[distance.methods[m]]])
+  min.name.enh<-apply(dist.matrix, 1, base::min)
+  for(i in 1:nrow(dist.matrix))
+  {
+    s2.i<-match(min.name.enh[i],dist.matrix[i,])
+    s1.i<-i
+    match.s1.s2.enh<-rbind(data.frame(s2.i=s2.i,s1.i=s1.i,s2name=d1[s2.i,]$full, s1name=ori1[s1.i,]$full, adist=min.name.enh[i],method=distance.methods[m]),match.s1.s2.enh)
+  }
+}
+# Let's have a look at the results
+library(reshape2)
+matched.names.matrix<-dcast(match.s1.s2.enh,s2.i+s1.i+s2name+s1name~method, value.var = "adist")
+View(matched.names.matrix)
+
+
+
+
+```
+
