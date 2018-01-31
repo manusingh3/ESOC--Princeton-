@@ -1,0 +1,59 @@
+#Prep
+```{r cars}
+#devtools::install_github("dkahle/ggmap")
+library(ggmap)
+setwd("C:/Users/ms52/Dropbox (ESOC - Princeton)/ESOC temp folders-MS/Dejan Project/Parliment 2015 and 2016/Parlamentarni izbori 2015 - rezultati po BM")
+
+d = read.csv("23Jan_2015_recheck.csv")
+
+d$full = paste(d$add_clean, d$city_clean, sep = ", ")
+
+d$year = "2015"
+d$ID = seq(1:nrow(d))
+
+head(d, n= 50)
+
+d$add_clean = as.character(d$add_clean)
+str(d)
+```
+
+
+#Geocoding the adresses
+
+```{r}
+
+i=2
+
+for(i in 1:nrow(d))
+{
+  # Print("Working...")
+  result <- geocode(d$full[i], "latlona", source = "google", override_limit = FALSE)
+  d$lon[i] <- as.numeric(result[1])
+  d$lat[i] <- as.numeric(result[2])
+  d$geoAddress[i] <- as.character(result[3])
+}
+
+ #result <- geocode("HRUSEVEC KUPLJENSKI, HRUSEVECKA CESTA 20", output = "latlona", source = "google")
+d<-d[is.na(d$lon),]
+
+result
+
+d$add_clean_bb = as.character(d$add_clean_bb)
+d$add_clean_bb = as.character(d$add_clean_bb)
+#-----------------------------------------------------------------------------------------------------------------------
+for (i in 1:nrow(d)){
+   tryCatch({
+    result <- geocode(d$add_clean_bb[i], "latlona", source = "google", override_limit = TRUE)
+  d$lon[i] <- as.numeric(result[1])
+  d$lat[i] <- as.numeric(result[2])
+  d$geoAddress[i] <- as.character(result[3])
+  
+   }, error = function(e) { print(paste("i =", i, "failed:")) })
+}
+#--------------------------------------------------------------------------------------------------------------------------
+
+write.csv(d, file = "2016_8Jan.csv")
+
+
+
+```
